@@ -6,6 +6,7 @@ Telegraph style. Root rules only. Read scoped `AGENTS.md` before touching a subt
 
 - Repo: `https://github.com/openclaw/openclaw`
 - Replies: repo-root file refs only, e.g. `extensions/telegram/src/index.ts:80`. No absolute paths, no `~/`.
+- Read `AGENT_HANDOFF.md` at session start for operational continuity before hosting/Telegram/autonomy changes.
 - CODEOWNERS: maintenance/refactors/tests are ok. For larger behavior, product, security, or ownership-sensitive changes, get a listed owner request/review first.
 - First pass: run docs list (`bin/docs-list` or `pnpm docs:list`; ignore if unavailable), then read only relevant docs/guides.
 - Missing deps: run `pnpm install`, rerun once, then report first actionable error.

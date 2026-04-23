@@ -46,6 +46,26 @@
 - Treat this as the continuity doc for Codex, Claude, Copilot, and any other repo-operating agent.
 - Keep this file updated when you change runtime topology, credentials wiring, ports, or operational policy.
 
+## Status Update (2026-04-23, VS Code Agent Handoff Refresh)
+
+- Local model context windows were raised:
+  - `ollama/llama3.2:1b` => `65536`
+  - `ollama/llama3.2:3b` => `65536`
+  - `ollama/llama3.2:3b-local` => `65536`
+  - `ollama/qwen2.5:7b` => `32768`
+- Runtime default model policy is now ultra-local and cost-minimizing:
+  - `agents.defaults.model.primary = ollama/llama3.2:1b`
+  - `agents.defaults.model.fallbacks = []`
+  - `agents.defaults.thinkingDefault = off`
+  - sub-agents also default to local (`ollama/llama3.2:1b`) with no fallbacks.
+- Copilot auth reality:
+  - The `github-copilot` plugin is bundled and loaded in the runtime image.
+  - Hetzner runtime currently has no GitHub Copilot auth profile and no `COPILOT_GITHUB_TOKEN`/`GH_TOKEN`/`GITHUB_TOKEN` env token.
+  - VS Code-side agent authentication does not automatically transfer to Hetzner runtime.
+  - Direct Copilot device-code request attempts from Hetzner currently return GitHub `HTTP 503` from `/login/device/code` (transient external dependency issue).
+- Git remotes:
+  - Hetzner `/root/openclaw` `origin` is now correctly set to `https://github.com/karaabd23-crypto/openclaw.git` (mismatch issue resolved).
+
 ## Session Outcome (What Was Done)
 
 - Confirmed Hetzner VPS reachable at `195.201.123.118` with SSH user `root`.
@@ -140,18 +160,23 @@
 - State path: `/root/.openclaw`
 - Container: `openclaw-openclaw-gateway-1`
 - Health: `Up ... (healthy)`
-- Default model: `ollama/qwen2.5:7b`
-- Fallbacks: `ollama/llama3.2:3b`, `openai/gpt-5.4-mini`, `openai/gpt-5.4`
-- Thinking default: `low`
+- Default model: `ollama/llama3.2:1b` (`local-main`)
+- Fallbacks: `[]` (none configured)
+- Thinking default: `off`
+- Local context windows:
+  - `llama3.2:1b => 65536`
+  - `llama3.2:3b => 65536`
+  - `llama3.2:3b-local => 65536`
+  - `qwen2.5:7b => 32768`
 - Per-model thinking overrides:
   - `ollama/qwen2.5:7b => off`
   - `ollama/llama3.2:3b => off`
 - Sub-agent model policy:
-  - primary `openai/gpt-5.4-mini`
-  - fallback `openai/gpt-5.4`
+  - primary `ollama/llama3.2:1b`
+  - fallback `[]`
   - `maxSpawnDepth=2`, `maxChildrenPerAgent=4`, `runTimeoutSeconds=900`, `maxConcurrent=10`
-- Embedded Pi execution contract: `strict-agentic`
-- Active-memory model: `ollama/qwen2.5:7b`
+- Embedded Pi execution contract: `default`
+- Active-memory model: `ollama/llama3.2:1b`
 - Memory search embeddings:
   - provider `ollama`
   - model `nomic-embed-text`
@@ -172,6 +197,7 @@
 - Auth profiles:
   - `ollama:manual` (marker)
   - `openai:default` (API key profile in auth store)
+  - no `github-copilot:*` auth profile yet
 - `.env` values:
   - `OPENCLAW_GATEWAY_BIND=lan`
   - `OPENCLAW_GATEWAY_PORT=127.0.0.1:28789`
@@ -250,11 +276,14 @@
     - The Copilot agent (this session) fills this gap in VS Code sessions.
     - For Hetzner-side OpenClaw to act in VS Code: no path currently exists without a VS Code extension MCP server.
 
-13. Hetzner git remote mismatch (URGENT - AUDIT 2026-04-23):
-    - Local repo `origin` now points to `karaabd23-crypto/openclaw` (personal fork).
-    - Hetzner `/root/openclaw` `origin` still points to `openclaw/openclaw.git` (org — read-only for karaabd23-crypto).
-    - Pull/push from Hetzner will fail or pull wrong commits.
-    - To fix: `ssh root@195.201.123.118 'cd /root/openclaw && git remote set-url origin https://github.com/karaabd23-crypto/openclaw.git'`
+13. GitHub Copilot auth bridge gap (AUDIT 2026-04-23):
+    - Desired state: OpenClaw on Hetzner should use GitHub Copilot subscription before OpenAI spend.
+    - Current state: no Copilot token/auth profile exists on Hetzner runtime.
+    - VS Code-side Copilot auth is not automatically reusable by Hetzner runtime.
+    - Runtime-side device login currently blocked by external GitHub `HTTP 503` on device-code endpoint.
+    - Fix path:
+      - retry `openclaw models auth login-github-copilot` directly on Hetzner when endpoint is healthy; or
+      - configure `copilot-proxy` with a reachable `/v1` bridge from VS Code to Hetzner.
 
 14. Brave search plugin not configured (AUDIT 2026-04-23):
     - The `brave` extension is present but has empty config `{}` in openclaw.json.
@@ -273,7 +302,8 @@
    - local tunnel health live
 3. Keep cost policy live:
    - local-first default
-   - OpenAI only via escalation/fallback
+   - bring Copilot online before reintroducing cloud fallbacks
+   - OpenAI only via explicit escalation/fallback
    - check spend cap in OpenAI dashboard
 4. Weekly verification:
    - `openclaw models status`
@@ -289,10 +319,11 @@
 - User priority: strong intelligence + proactivity, with strict spend control.
 - Budget posture target: about `$25/month` (provider-side hard cap).
 - Runtime default now routes local-first:
-  - primary `ollama/qwen2.5:7b`
-  - fallbacks `ollama/llama3.2:3b`, `openai/gpt-5.4-mini`, `openai/gpt-5.4`
+  - primary `ollama/llama3.2:1b`
+  - fallbacks currently `[]`
 - Sub-agent escalation route:
-  - primary `openai/gpt-5.4-mini`, fallback `openai/gpt-5.4`
+  - currently local-only (`ollama/llama3.2:1b`)
+  - add Copilot/OpenAI fallbacks only after validating reliability and cost policy
 - Telegram direct and slash sessions are pinned back to local model path after cleanup.
 - Future agents should preserve this spend-control posture unless user explicitly changes policy.
 

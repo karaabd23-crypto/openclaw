@@ -7,7 +7,9 @@
   - `systemctl --user status openclaw-hetzner-tunnel.service`
   - `curl -fsS http://127.0.0.1:18789/healthz`
 - Read and follow `active/10_hetzner_cutover_incident_2026-04-22.md`.
-- **FIX - Hetzner git remote:** `ssh root@195.201.123.118 'cd /root/openclaw && git remote set-url origin https://github.com/karaabd23-crypto/openclaw.git'`
+- **Retry GitHub Copilot runtime auth on Hetzner:** `ssh root@195.201.123.118 'docker exec -it openclaw-openclaw-gateway-1 openclaw models auth login-github-copilot --yes'`
+  - If GitHub `/login/device/code` still returns `HTTP 503`, wait and retry.
+  - VS Code-side Copilot auth does not auto-sync to Hetzner.
 - Lock and record 8 decisions (4 per track):
   - IELTS: primary student profile, core outcome, main offer format, one upsell
   - CELPIP: primary student profile, core outcome, main offer format, one upsell
@@ -53,7 +55,7 @@
   - blockers
   - adjustments
 - Run local-first model routing review using weekly report template.
-- Complexity routing: evaluate if a prompt-length or keyword heuristic could auto-escalate from local model to gpt-5.4 without manual `/model` commands.
+- Complexity routing: evaluate if a prompt-length or keyword heuristic could auto-escalate from local model to Copilot/cloud without manual `/model` commands.
 - Analytics API access for OpenClaw: evaluate adding Google Analytics Data API or Search Console API as an MCP tool so OpenClaw can query IELTScorner data without manual export.
 
 ## Weekly Usage Report Template (Model Routing Policy v1)

@@ -7,8 +7,9 @@
   - local machine is tunnel-only (`127.0.0.1:18789` -> Hetzner `127.0.0.1:28789`).
   - incident details: `active/10_hetzner_cutover_incident_2026-04-22.md`
 - Local-first model routing policy is live:
-  - default `ollama/qwen2.5:7b`
-  - remote escalation path available for harder work
+  - default `ollama/llama3.2:1b` (`local-main`)
+  - local context windows raised (Llama profiles `65536`, Qwen `32768`)
+  - cloud escalation path is intentionally not in active fallback chain right now
 - IELTS Corner and CELPIP Corner are equal-split business tracks.
 - CELPIP currently has stronger near-term monetization upside.
 - Offer and conversion execution work is active (not fully locked yet).
@@ -31,7 +32,8 @@
 - OpenClaw has no programmatic access to Google Analytics or Search Console for IELTScorner.
 - OpenClaw has no configured access to the IELTScorner GitHub repo on Hetzner.
 - Brave/Exa search plugins installed but not configured (empty API key).
-- Hetzner git remote points to `openclaw/openclaw.git` org, not `karaabd23-crypto/openclaw` fork (fix needed).
+- Copilot subscription auth is present in VS Code agent context but not yet bridged into Hetzner runtime.
+- GitHub device-code endpoint from Hetzner has returned transient `HTTP 503`, blocking direct Copilot login until retry succeeds.
 
 ## Open decisions
 

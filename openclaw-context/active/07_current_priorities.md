@@ -47,8 +47,9 @@
 - Done looks like:
   - local-first model usage by default
   - remote escalation only for hard/high-stakes tasks
+  - Copilot subscription path is active on runtime before OpenAI is reintroduced as fallback
 - First next step:
-  - review weekly usage with `active/09_next_actions.md` template
+  - complete Copilot runtime auth on Hetzner and then review weekly usage with `active/09_next_actions.md` template
 
 6. Maintain handoff hygiene
 

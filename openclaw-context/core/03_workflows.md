@@ -29,6 +29,7 @@
   - X/social short-form derivatives.
 - Keep voice direct and utility-first.
 - Include one clear CTA per content unit.
+- Keep IELTS and CELPIP delivery balanced; do not starve either track.
 
 ## Website workflow
 
@@ -53,6 +54,15 @@
 - Prioritize impact, correctness, and execution speed.
 - Mark weak claims as `Needs verification`.
 - Explicitly call out assumptions.
+
+## Handoff hygiene workflow
+
+- Refresh handoff files after major runtime or business-state changes:
+  - `AGENT_HANDOFF.md`
+  - `openclaw-context/active/07_current_priorities.md`
+  - `openclaw-context/active/08_now.md`
+  - `openclaw-context/active/09_next_actions.md`
+- Keep handoff content operational and current; remove stale guidance promptly.
 
 ## Preferred way agents should operate
 

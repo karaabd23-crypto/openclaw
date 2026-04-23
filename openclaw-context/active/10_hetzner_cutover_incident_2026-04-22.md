@@ -40,6 +40,24 @@
 4. Make runtime changes on Hetzner over SSH.
 5. After changes, verify health and channel startup on Hetzner.
 
+## Current status snapshot (post-cutover)
+
+- Runtime currently healthy at Hetzner `/healthz`.
+- Local runtime remains masked/inactive; tunnel service remains active.
+- Model policy is local-first with remote escalation:
+  - primary local Ollama model
+  - ordered OpenAI fallback/escalation path
+- This incident file remains mandatory pre-read before hosting/runtime edits.
+
+## Handoff note
+
+- Business continuity runs IELTS and CELPIP as equal tracks.
+- CELPIP currently has stronger near-term monetization potential and should not be deprioritized.
+- Runtime integrity is a prerequisite, not the business objective.
+- After runtime checks pass, move directly to active dual-track deliverables in:
+  - `active/07_current_priorities.md`
+  - `active/09_next_actions.md`
+
 ## Repo/runtime clarification
 
 - VS Code repo: `/home/karaa/openclaw` (development checkout).

@@ -1,102 +1,60 @@
 # Current Priorities
 
-1. Protect single-runtime integrity (Hetzner-only)
+1. Keep single-runtime integrity (Hetzner-only)
 
 - Why it matters:
-  - Dual runtimes caused split memory and operational confusion.
-- What done looks like:
-  - Local OpenClaw runtime stays off.
-  - Tunnel path stays active and healthy.
-  - All runtime changes happen on Hetzner only.
+  - Runtime split creates memory drift and bad decisions.
+- Done looks like:
+  - local gateway stays masked/inactive
+  - tunnel path stays healthy
+  - runtime changes happen on Hetzner only
 - First next step:
-  - Run the preflight triad in `active/10_hetzner_cutover_incident_2026-04-22.md`.
+  - run the preflight triad in `active/10_hetzner_cutover_incident_2026-04-22.md`
 
-2. Finalize core identity and project memory for OpenClaw
+2. Run dual-track revenue path (IELTS + CELPIP)
 
 - Why it matters:
-  - If memory is wrong, all downstream execution is misdirected.
-- What done looks like:
-  - OpenClaw correctly states: Kara Abdolmaleki, IELTS/CELPIP focus, current priorities.
+  - Website and business flow are split across both tests.
+  - CELPIP currently has stronger near-term monetization potential.
+- Done looks like:
+  - one core offer + one upsell + one CTA flow documented and active for each test track
 - First next step:
-  - Re-run memory prompt and verify name + project recall in one response.
+  - finalize both offer stacks in `core/02_businesses_and_offers.md`
 
-3. Define and lock IELTS Corner offer structure
+3. Enforce equal-split execution discipline
 
 - Why it matters:
-  - Revenue decisions stay vague until offers are explicit.
-- What done looks like:
-  - 1 core offer + 1 upsell + delivery format + target student profile documented.
+  - unbalanced attention creates avoidable revenue loss.
+- Done looks like:
+  - IELTS and CELPIP each get explicit weekly deliverables.
+  - CELPIP monetization experiments are not deprioritized.
 - First next step:
-  - Draft offer matrix in `/openclaw-context/core/02_businesses_and_offers.md`.
+  - keep the equal-split policy explicit in active briefs and handoffs
 
-4. Define CELPIP Corner positioning vs IELTS Corner
+4. Run weekly content-to-conversion loop
 
 - Why it matters:
-  - Prevents overlap and diluted execution.
-- What done looks like:
-  - Clear scope split and primary customer outcome for each brand.
+  - publishing without conversion path wastes effort.
+- Done looks like:
+  - each cycle ships content and CTA steps for both IELTS and CELPIP tracks
 - First next step:
-  - Write a one-page differentiation summary with decision bullets.
+  - pick this week’s topic and CTA destination
 
-5. Build one practical conversion path (content -> paid)
+5. Keep cost policy strict while preserving quality
 
 - Why it matters:
-  - Traffic/content without conversion wastes effort.
-- What done looks like:
-  - One complete funnel path with CTA, booking/payment step, and follow-up.
+  - spend must stay controlled without quality collapse.
+- Done looks like:
+  - local-first model usage by default
+  - remote escalation only for hard/high-stakes tasks
 - First next step:
-  - Choose one channel and map exact steps from first touch to payment.
+  - review weekly usage with `active/09_next_actions.md` template
 
-6. Build weekly Substack + X/social publishing system
+6. Maintain handoff hygiene
 
 - Why it matters:
-  - Content consistency drives trust, audience, and opportunity flow.
-- What done looks like:
-  - One repeatable weekly workflow from idea -> Substack post -> X/social derivatives.
+  - stale handoffs cause wrong agent behavior.
+- Done looks like:
+  - `AGENT_HANDOFF.md` + active context files reflect current state and priorities
 - First next step:
-  - Define this week's one core topic and output checklist.
-
-7. Stand up job application workflow system
-
-- Why it matters:
-  - Career opportunities need structured, repeatable execution.
-- What done looks like:
-  - Standard pipeline for role targeting, tailored materials, tracking, and follow-ups.
-- First next step:
-  - Create a single tracker format and first target-role list.
-
-8. Process chat export into curated session memory
-
-- Why it matters:
-  - Past decisions are currently fragmented across agents/sessions.
-- What done looks like:
-  - Key sessions distilled into facts, decisions, open questions, and next actions.
-- First next step:
-  - Import first 10 high-value sessions into archive summaries.
-
-9. Reduce API cost with local-first routing pilot
-
-- Why it matters:
-  - Cost control without quality loss is required for scale.
-- What done looks like:
-  - 2-week baseline vs policy run captured with weekly report fields.
-- First next step:
-  - Start Week 1 baseline report in `active/09_next_actions.md` template.
-
-10. Decide OpenClaw online deployment path
-
-- Why it matters:
-  - Hosting indecision blocks reliable operations.
-- What done looks like:
-  - One chosen hosting path + security/ops checklist + migration steps.
-- First next step:
-  - Compare 2 host options and pick one with explicit tradeoffs.
-
-11. Move from planning-heavy mode to shipping cadence
-
-- Why it matters:
-  - Execution speed is currently the main leverage bottleneck.
-- What done looks like:
-  - Weekly output cadence: shipped funnel/docs/system changes, not just planning.
-- First next step:
-  - Set this week's top 3 deliverables with deadline and owner.
+  - refresh handoffs at least weekly or after major runtime/business changes

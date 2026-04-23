@@ -5,28 +5,29 @@
 - What it is:
   - Primary exam-prep brand/project for IELTS-focused education content/offers.
 - Main goal:
-  - Grow audience and convert into paid offers (courses/tutoring/services).
+  - Grow audience and convert into paid offers through a repeatable content -> CTA -> paid path.
 - Main assets/repos/domains/files:
-  - Domain/repo details in this workspace: Needs verification.
+  - Offer and execution context tracked in `openclaw-context/core/02_businesses_and_offers.md`.
+  - Active execution state tracked in `openclaw-context/active/08_now.md`.
 - Immediate risks/blockers:
-  - Offer/pricing/funnel details not fully structured in context.
-  - SEO/analytics and conversion setup quality: Needs verification.
+  - Offer/pricing/funnel details are not fully locked.
+  - Execution can drift into planning loops without weekly ship targets.
 - Next likely milestone:
-  - Finalized offer ladder + focused conversion flow (Needs verification).
+  - Finalized offer ladder + one actively used conversion flow.
 
 ## CELPIP Corner
 
 - What it is:
   - CELPIP-focused education brand/project.
 - Main goal:
-  - Build a clear parallel offer/content funnel to IELTS Corner.
+  - Build a full revenue lane in equal split with IELTS.
 - Main assets/repos/domains/files:
   - Domain/repo details in this workspace: Needs verification.
 - Immediate risks/blockers:
-  - Scope overlap with IELTS work can dilute execution.
-  - Offer and GTM clarity: Needs verification.
+  - Scope overlap with IELTS can dilute execution if segmentation stays fuzzy.
+  - Positioning and GTM clarity still needs explicit lock-in.
 - Next likely milestone:
-  - Defined audience, offer, and first conversion path (Needs verification).
+  - Defined audience/offer and active CELPIP conversion loop with weekly outputs.
 
 ## Tutoring and webinar monetization
 

@@ -101,6 +101,36 @@
     - compose recreate briefly exposed ports on `0.0.0.0`; fixed immediately by restoring `.env` to loopback binds:
       - `OPENCLAW_GATEWAY_PORT=127.0.0.1:28789`
       - `OPENCLAW_BRIDGE_PORT=127.0.0.1:28790`
+- Applied cost-first hybrid routing policy (2026-04-22):
+  - Confirmed live runtime (`2026.4.21`) has no native complexity-threshold model auto-router; model policy remains primary + ordered fallbacks.
+  - Set default model path to local Ollama first:
+    - `agents.defaults.model.primary = ollama/qwen2.5:7b`
+    - `agents.defaults.model.fallbacks = [ollama/llama3.2:3b, openai/gpt-5.4-mini, openai/gpt-5.4]`
+  - Added per-model thinking overrides to avoid local provider schema failures:
+    - `agents.defaults.models["ollama/qwen2.5:7b"].params.thinking = off`
+    - `agents.defaults.models["ollama/llama3.2:3b"].params.thinking = off`
+  - Added explicit sub-agent escalation lane:
+    - `agents.defaults.subagents.model.primary = openai/gpt-5.4-mini`
+    - `agents.defaults.subagents.model.fallbacks = [openai/gpt-5.4]`
+    - `agents.defaults.subagents.thinking = low`
+  - Enabled strict embedded Pi execution contract for GPT-5-family follow-through:
+    - `agents.defaults.embeddedPi.executionContract = strict-agentic`
+  - Moved active-memory model off OpenAI to local Ollama:
+    - `plugins.entries.active-memory.config.model = ollama/qwen2.5:7b`
+  - Restarted gateway and verified health + live status with successful local test turn (`openclaw agent --agent main` returned `OK` on `ollama/qwen2.5:7b` with `requestShaping.thinking=off`).
+- Applied chat-distillation + memory reliability update (2026-04-23):
+  - Parsed preserved session history from live Hetzner sessions and migrated local snapshot.
+  - Wrote distilled directive summary to:
+    - `openclaw-context/archive/2026-04-23_vscode_chat_distillation.md`
+    - `memory/2026-04-23.md`
+    - appended update block in `MEMORY.md`
+    - appended priority correction block in `USER.md`
+  - Switched memory embeddings provider from OpenAI to local Ollama to avoid quota failures:
+    - `agents.defaults.memorySearch.provider = ollama`
+    - `agents.defaults.memorySearch.model = nomic-embed-text`
+    - `agents.defaults.memorySearch.remote.baseUrl = http://172.17.0.1:11434`
+    - `agents.defaults.memorySearch.fallback = none`
+  - Verified local embeddings and successful memory indexing/search post-change.
 
 ## Verified Current Runtime State (Last Check)
 
@@ -110,12 +140,25 @@
 - State path: `/root/.openclaw`
 - Container: `openclaw-openclaw-gateway-1`
 - Health: `Up ... (healthy)`
-- Codex CLI: installed inside running container at `/home/node/.npm-global/bin/codex` (`codex-cli 0.122.0`)
-- Codex auth: present at `/home/node/.codex/auth.json`
-- OpenClaw CLI backend override: `agents.defaults.cliBackends["codex-cli"].command=/home/node/.npm-global/bin/codex` (OpenAI remains default model route)
-- Default model: `openai-codex/gpt-5.4`
-- Fallbacks: `openai-codex/gpt-5.4-mini`, `openai-codex/gpt-5.3-codex`, `local-default` (`ollama/llama3.2:3b-local`)
+- Default model: `ollama/qwen2.5:7b`
+- Fallbacks: `ollama/llama3.2:3b`, `openai/gpt-5.4-mini`, `openai/gpt-5.4`
 - Thinking default: `low`
+- Per-model thinking overrides:
+  - `ollama/qwen2.5:7b => off`
+  - `ollama/llama3.2:3b => off`
+- Sub-agent model policy:
+  - primary `openai/gpt-5.4-mini`
+  - fallback `openai/gpt-5.4`
+  - `maxSpawnDepth=2`, `maxChildrenPerAgent=4`, `runTimeoutSeconds=900`, `maxConcurrent=10`
+- Embedded Pi execution contract: `strict-agentic`
+- Active-memory model: `ollama/qwen2.5:7b`
+- Memory search embeddings:
+  - provider `ollama`
+  - model `nomic-embed-text`
+  - remote base URL `http://172.17.0.1:11434`
+- Telegram session pins verified on local model:
+  - `agent:main:telegram:direct:232973295 -> ollama/qwen2.5:7b`
+  - `agent:main:telegram:slash:232973295 -> ollama/qwen2.5:7b`
 - Browser runtime config:
   - `browser.headless=true`
   - `browser.noSandbox=true`
@@ -149,12 +192,9 @@
 
 ## Outstanding Issues (Still Needs Work)
 
-1. Telegram polling conflict is unresolved:
-   - Logs show repeated `409 Conflict: terminated by other getUpdates request`.
-   - Meaning: another process is polling the same bot token.
-   - Additional proof (2026-04-21): with Hetzner gateway fully stopped, a direct single-thread `getUpdates` probe loop still observed intermittent conflict, confirming at least one external poller outside this VPS.
-   - Mitigation applied (2026-04-22): token rotated in BotFather and OpenClaw updated to new token (validated with `getMe` for `@SirAlfred_P_bot`).
-   - Post-rotation startup no longer shows `getUpdates` 409 in recent tail windows; keep monitoring and re-check if conflicts reappear.
+1. Telegram conflict monitoring remains required:
+   - No recent `getUpdates` `409 Conflict` events were found in current 12-hour log windows.
+   - Keep monitoring because historical conflict came from an external poller.
 
 2. Token security incident:
    - A Telegram bot token was pasted in chat.
@@ -182,29 +222,95 @@
    - `google-workspace` MCP command path now resolves (`/home/node/.local/bin/uvx`) and the server is enabled.
    - If MCP startup fails later, debug `uvx workspace-mcp` runtime/env/OAuth state rather than path resolution.
 
+8. Complexity auto-routing limitations:
+   - Current runtime version does not expose a native complexity threshold router (for example "switch to model X when task is hard").
+   - Practical policy is local-first defaults + explicit sub-agent escalation + OpenAI fallback chain.
+   - If a session was previously pinned to legacy `codex-cli/*`, reset it with `/model local-main` (or any supported model alias) in that session.
+
+9. IELTS/CELPIP execution gap (non-technical):
+   - Both IELTS and CELPIP are active business tracks, but offer/funnel assets are still partially specified in context files.
+   - CELPIP currently has stronger near-term monetization potential; do not deprioritize it.
+
+10. Google Analytics and AdSense access gap (AUDIT 2026-04-23):
+    - IELTScorner site has GA4 (`G-G0WCV3WJ44`) and AdSense (`ca-pub-5615542310815721`) already embedded in the site code.
+    - OpenClaw has NO programmatic access to GA4 data or AdSense reports.
+    - The `google-workspace` MCP only covers gmail/drive/calendar — NOT Analytics or Search Console.
+    - To fix: add Google Analytics Data API MCP or expose GA4/Search Console via a custom MCP tool.
+    - Immediate manual workaround: Kara reviews GA4 + Search Console dashboards and summarizes findings for OpenClaw context.
+
+11. IELTScorner repo access gap (AUDIT 2026-04-23):
+    - IELTScorner repo: `karaabd23-crypto/ieltscorner-site` at `/mnt/c/Users/Karaa/Documents/ieltscorner-site` locally.
+    - OpenClaw has NO configured GitHub MCP or filesystem path pointing to the IELTScorner repo on Hetzner.
+    - OpenClaw CAN access the repo locally via VS Code + MCP (if the workspace is open in VS Code), but cannot on Hetzner.
+    - To fix on Hetzner: either clone the repo to `/root/ieltscorner-site` on Hetzner and mount it in the container, or add a GitHub MCP server.
+
+12. VS Code access gap (AUDIT 2026-04-23):
+    - OpenClaw IS accessible FROM VS Code via `.vscode/mcp.json` (openclaw MCP server configured).
+    - OpenClaw does NOT have the ability to control VS Code (open files, run tasks, etc.) — this is one-way.
+    - The Copilot agent (this session) fills this gap in VS Code sessions.
+    - For Hetzner-side OpenClaw to act in VS Code: no path currently exists without a VS Code extension MCP server.
+
+13. Hetzner git remote mismatch (URGENT - AUDIT 2026-04-23):
+    - Local repo `origin` now points to `karaabd23-crypto/openclaw` (personal fork).
+    - Hetzner `/root/openclaw` `origin` still points to `openclaw/openclaw.git` (org — read-only for karaabd23-crypto).
+    - Pull/push from Hetzner will fail or pull wrong commits.
+    - To fix: `ssh root@195.201.123.118 'cd /root/openclaw && git remote set-url origin https://github.com/karaabd23-crypto/openclaw.git'`
+
+14. Brave search plugin not configured (AUDIT 2026-04-23):
+    - The `brave` extension is present but has empty config `{}` in openclaw.json.
+    - Not functional until a Brave Search API key is added.
+    - Exa search plugin: same status — not confirmed configured.
+
 ## Immediate Next-Step Checklist
 
-1. Rotate Telegram bot token and store only in VPS secret files.
-2. Stop any other runtime polling the same token.
-3. Restart gateway and verify Telegram channel no longer logs 409 conflicts.
-4. Send DM test message to bot and confirm response latency/quality.
-5. Tighten Control UI policy:
-   - keep explicit `allowedOrigins`
-   - remove `dangerouslyAllowHostHeaderOriginFallback` if no longer needed.
-6. Re-validate with:
-   - `docker compose -f docker-compose.yml ps`
-   - `docker logs --tail=120 openclaw-openclaw-gateway-1`
-   - `curl -fsS http://127.0.0.1:28789/healthz`
-7. In OpenAI dashboard, enforce hard monthly cap (target `$25/month` unless user overrides).
+1. Lock IELTS + CELPIP offer stacks v1 in context docs:
+   - one core offer per track
+   - one upsell per track
+   - one CTA path to booking/payment per track
+2. Keep runtime preflight discipline:
+   - local gateway masked/inactive
+   - tunnel active
+   - local tunnel health live
+3. Keep cost policy live:
+   - local-first default
+   - OpenAI only via escalation/fallback
+   - check spend cap in OpenAI dashboard
+4. Weekly verification:
+   - `openclaw models status`
+   - telegram session pin check
+   - `/healthz` + container health + channel startup logs
+5. Publish one IELTS unit and one CELPIP unit per cycle:
+   - long-form or core content unit per track
+   - derivatives per track
+   - single CTA into each offer flow
 
 ## Cost and Model Intent (User Requirement)
 
 - User priority: strong intelligence + proactivity, with strict spend control.
 - Budget posture target: about `$25/month` (provider-side hard cap).
-- Runtime default currently routes through Codex aliases:
-  - primary `openai-codex/gpt-5.4`
-  - fallbacks `openai-codex/gpt-5.4-mini`, `openai-codex/gpt-5.3-codex`, then `local-default` (Ollama local).
-- Future agents should keep this default/fallback order unless user explicitly changes policy.
+- Runtime default now routes local-first:
+  - primary `ollama/qwen2.5:7b`
+  - fallbacks `ollama/llama3.2:3b`, `openai/gpt-5.4-mini`, `openai/gpt-5.4`
+- Sub-agent escalation route:
+  - primary `openai/gpt-5.4-mini`, fallback `openai/gpt-5.4`
+- Telegram direct and slash sessions are pinned back to local model path after cleanup.
+- Future agents should preserve this spend-control posture unless user explicitly changes policy.
+
+## IELTS + CELPIP Handoff (Business Continuity)
+
+- Business focus:
+  - Equal split between IELTS Corner and CELPIP Corner.
+  - CELPIP has higher near-term monetization potential at the moment.
+- Mandatory continuity behaviors:
+  - Start work by anchoring to `openclaw-context/core/01_projects.md`, `openclaw-context/core/02_businesses_and_offers.md`, and `openclaw-context/active/08_now.md`.
+  - Preserve runtime integrity and cost policy while executing business/content tasks.
+  - Do not replace shipping tasks with broad planning-only loops.
+- Expected weekly outputs:
+  - shipped content artifact(s) with CTA for both tracks
+  - one offer/funnel improvement in each track
+  - one brief handoff/context refresh
+- Quality gate:
+  - if business claims are uncertain, mark `Needs verification` and create a concrete verification action.
 
 ## Agent Rules for Future Sessions
 

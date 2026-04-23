@@ -1,0 +1,10 @@
+{
+  "servers": {
+    "openclaw": {
+      "type": "stdio",
+      "command": "wsl",
+      "args": ["-d", "Ubuntu", "--", "/home/karaa/.local/bin/openclaw-mcp-serve"],
+      "description": "OpenClaw gateway bridge — exposes conversations, transcripts, live events, and outbound send over MCP. Connects to Hetzner runtime via local SSH tunnel on 127.0.0.1:18789."
+    }
+  }
+}

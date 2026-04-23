@@ -1,91 +1,102 @@
 # Current Priorities
 
-1. Close top regression risks in core gateway
+1. Protect single-runtime integrity (Hetzner-only)
 
 - Why it matters:
-  - Prevents trust loss and support churn.
+  - Dual runtimes caused split memory and operational confusion.
 - What done looks like:
-  - No known high-severity regressions in touched surfaces.
+  - Local OpenClaw runtime stays off.
+  - Tunnel path stays active and healthy.
+  - All runtime changes happen on Hetzner only.
 - First next step:
-  - Run `pnpm check:changed` and list failing lanes with owner/action.
+  - Run the preflight triad in `active/10_hetzner_cutover_incident_2026-04-22.md`.
 
-2. Improve onboarding/setup reliability
+2. Finalize core identity and project memory for OpenClaw
 
 - Why it matters:
-  - Setup failure blocks adoption.
+  - If memory is wrong, all downstream execution is misdirected.
 - What done looks like:
-  - Reproducible happy-path and documented recovery for common failures.
+  - OpenClaw correctly states: Kara Abdolmaleki, IELTS/CELPIP focus, current priorities.
 - First next step:
-  - Review `docs/start/*` + recent setup fixes in `CHANGELOG.md`; open a concrete fix list.
+  - Re-run memory prompt and verify name + project recall in one response.
 
-3. Harden memory failure behavior
+3. Define and lock IELTS Corner offer structure
 
 - Why it matters:
-  - Memory errors can break ongoing sessions.
+  - Revenue decisions stay vague until offers are explicit.
 - What done looks like:
-  - Memory recall failures degrade safely without turn failure.
+  - 1 core offer + 1 upsell + delivery format + target student profile documented.
 - First next step:
-  - Run and summarize relevant `qa/scenarios/memory/*` cases.
+  - Draft offer matrix in `/openclaw-context/core/02_businesses_and_offers.md`.
 
-4. Stabilize highest-traffic channels
+4. Define CELPIP Corner positioning vs IELTS Corner
 
 - Why it matters:
-  - Channel reliability is core product value.
+  - Prevents overlap and diluted execution.
 - What done looks like:
-  - Stable send/receive/pairing on top channel paths.
+  - Clear scope split and primary customer outcome for each brand.
 - First next step:
-  - Build a channel issue shortlist from `docs/channels/troubleshooting.md` and recent changelog fixes.
+  - Write a one-page differentiation summary with decision bullets.
 
-5. Protect plugin/core architecture boundaries
+5. Build one practical conversion path (content -> paid)
 
 - Why it matters:
-  - Prevents long-term maintenance debt.
+  - Traffic/content without conversion wastes effort.
 - What done looks like:
-  - No new core special-cases that belong in extension contracts.
+  - One complete funnel path with CTA, booking/payment step, and follow-up.
 - First next step:
-  - Audit current branch touches against `src/plugins/AGENTS.md` and root architecture rules.
+  - Choose one channel and map exact steps from first touch to payment.
 
-6. Complete Android E2E/release hardening checklist
+6. Build weekly Substack + X/social publishing system
 
 - Why it matters:
-  - Android release readiness is still open.
+  - Content consistency drives trust, audience, and opportunity flow.
 - What done looks like:
-  - Remaining hardening item in `apps/android/README.md` is closed.
+  - One repeatable weekly workflow from idea -> Substack post -> X/social derivatives.
 - First next step:
-  - Convert remaining checklist into tracked tasks with assignees.
+  - Define this week's one core topic and output checklist.
 
-7. Reduce test flake and hot-lane runtime
+7. Stand up job application workflow system
 
 - Why it matters:
-  - Faster stable feedback accelerates safe merges.
+  - Career opportunities need structured, repeatable execution.
 - What done looks like:
-  - Touched lanes run reliably with lower median runtime.
+  - Standard pipeline for role targeting, tailored materials, tracking, and follow-ups.
 - First next step:
-  - Identify top slow/flaky suites and create 1 fix PR per hotspot.
+  - Create a single tracker format and first target-role list.
 
-8. Keep docs/config contracts in sync
+8. Process chat export into curated session memory
 
 - Why it matters:
-  - Drift causes operator and contributor errors.
+  - Past decisions are currently fragmented across agents/sessions.
 - What done looks like:
-  - No config/docs drift on touched changes.
+  - Key sessions distilled into facts, decisions, open questions, and next actions.
 - First next step:
-  - Add drift-check commands to PR checklist for config-affecting changes.
+  - Import first 10 high-value sessions into archive summaries.
 
-9. Harden iOS beta path reliability
+9. Reduce API cost with local-first routing pilot
 
 - Why it matters:
-  - iOS node reliability is still fragile.
+  - Cost control without quality loss is required for scale.
 - What done looks like:
-  - Repeatable beta archive/upload path without manual firefighting.
+  - 2-week baseline vs policy run captured with weekly report fields.
 - First next step:
-  - Validate the `apps/ios/README.md` maintainer release checklist end-to-end.
+  - Start Week 1 baseline report in `active/09_next_actions.md` template.
 
-10. Clarify business priorities and offers
+10. Decide OpenClaw online deployment path
 
 - Why it matters:
-  - Needed for roadmap and focus tradeoffs.
+  - Hosting indecision blocks reliable operations.
 - What done looks like:
-  - Confirmed priorities and offer model documented.
+  - One chosen hosting path + security/ops checklist + migration steps.
 - First next step:
-  - Needs verification from owner input.
+  - Compare 2 host options and pick one with explicit tradeoffs.
+
+11. Move from planning-heavy mode to shipping cadence
+
+- Why it matters:
+  - Execution speed is currently the main leverage bottleneck.
+- What done looks like:
+  - Weekly output cadence: shipped funnel/docs/system changes, not just planning.
+- First next step:
+  - Set this week's top 3 deliverables with deadline and owner.

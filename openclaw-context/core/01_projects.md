@@ -1,70 +1,98 @@
 # Projects
 
-## OpenClaw
+## IELTS Corner
 
 - What it is:
-  - Open-source self-hosted AI gateway/personal assistant platform.
+  - Primary exam-prep brand/project for IELTS-focused education content/offers.
 - Main goal:
-  - Reliable, secure assistant behavior across channels/devices.
+  - Grow audience and convert into paid offers (courses/tutoring/services).
 - Main assets/repos/domains/files:
-  - Repo: `openclaw`.
-  - Surfaces: `src/`, `extensions/`, `docs/`, `ui/`, `apps/`.
-  - References: `openclaw.ai`, `docs.openclaw.ai`, `clawhub.com`.
+  - Domain/repo details in this workspace: Needs verification.
 - Immediate risks/blockers:
-  - High regression risk from broad integration surface.
-  - Security and compatibility constraints across many channels/tools.
+  - Offer/pricing/funnel details not fully structured in context.
+  - SEO/analytics and conversion setup quality: Needs verification.
 - Next likely milestone:
-  - Needs verification.
+  - Finalized offer ladder + focused conversion flow (Needs verification).
 
-## iOS companion app (`apps/ios`)
+## CELPIP Corner
 
 - What it is:
-  - iOS node app for connecting to Gateway.
+  - CELPIP-focused education brand/project.
 - Main goal:
-  - Reliable node pairing/push behavior.
+  - Build a clear parallel offer/content funnel to IELTS Corner.
 - Main assets/repos/domains/files:
-  - `apps/ios/README.md`, `apps/ios/VERSIONING.md`, `apps/ios/version.json`, `apps/ios/CHANGELOG.md`.
+  - Domain/repo details in this workspace: Needs verification.
 - Immediate risks/blockers:
-  - Release and runtime hardening workload.
+  - Scope overlap with IELTS work can dilute execution.
+  - Offer and GTM clarity: Needs verification.
 - Next likely milestone:
-  - Needs verification.
+  - Defined audience, offer, and first conversion path (Needs verification).
 
-## Android companion app (`apps/android`)
+## Tutoring and webinar monetization
 
 - What it is:
-  - Android node app for connect/chat/voice/device flows.
+  - Service layer across IELTS/CELPIP through tutoring and webinars.
 - Main goal:
-  - Stable release-ready node experience.
+  - Consistent revenue from live delivery while product systems mature.
 - Main assets/repos/domains/files:
-  - `apps/android/README.md`, `apps/android/app/build.gradle.kts`.
+  - Scheduling/payment assets in workspace: Needs verification.
 - Immediate risks/blockers:
-  - E2E QA and release hardening workload.
-  - Play policy constraints for restricted permissions.
+  - Capacity ceiling and inconsistent funnel handoff to paid bookings.
 - Next likely milestone:
-  - Needs verification.
+  - Standardized webinar-to-booking pipeline (Needs verification).
 
-## Swabble (`Swabble/`)
+## AI feedback and essay correction workflow
 
 - What it is:
-  - Swift wake-word hook daemon + `SwabbleKit` utilities.
+  - AI-assisted feedback/correction flow for student writing.
 - Main goal:
-  - Local speech-triggered automation.
+  - Deliver faster scalable feedback with clear quality boundaries.
 - Main assets/repos/domains/files:
-  - `Swabble/README.md`, `Swabble/docs/spec.md`.
+  - Workflow/tooling implementation in workspace: Needs verification.
 - Immediate risks/blockers:
-  - Service-control and detection hardening.
+  - Quality control and trust if outputs are not tightly reviewed.
 - Next likely milestone:
-  - Needs verification.
+  - Defined rubric + repeatable assisted-review process (Needs verification).
 
-## `openclaw.ai` sibling website
+## OpenClaw operator system
 
 - What it is:
-  - Website/installer surface referenced by repo guidance.
+  - Personal execution system to run coding/content/business tasks with agent support.
 - Main goal:
-  - Product/install web surface.
+  - Reduce friction, improve focus, and enforce decision quality.
 - Main assets/repos/domains/files:
-  - Referenced sibling path `../openclaw.ai`.
+  - `openclaw-context/*`, workspace rules, and OpenClaw runtime config.
 - Immediate risks/blockers:
-  - Not present in this workspace; Needs verification.
+  - Memory drift if context is not curated and updated frequently.
+  - Runtime split risk if local and Hetzner instances diverge.
 - Next likely milestone:
-  - Needs verification.
+  - Stable weekly context update loop with measurable execution gains.
+  - Hetzner-only runtime integrity held for 14 consecutive days.
+
+## Personal content automation (Substack + X/social)
+
+- What it is:
+  - Workflow system for drafting, scheduling, and repurposing content across Substack and social channels.
+- Main goal:
+  - Consistent publishing cadence with less manual overhead.
+- Main assets/repos/domains/files:
+  - Substack and X account workflow details in workspace: Needs verification.
+- Immediate risks/blockers:
+  - Voice consistency and quality control across channels.
+  - Publishing workflow not yet standardized end-to-end.
+- Next likely milestone:
+  - One repeatable weekly content pipeline from idea -> publish -> distribution (Needs verification).
+
+## Job application workflow system
+
+- What it is:
+  - Structured pipeline for resume/role targeting, application tracking, and follow-up.
+- Main goal:
+  - Increase application quality and response rate with repeatable process.
+- Main assets/repos/domains/files:
+  - Resume/job assets in workspace: Needs verification.
+- Immediate risks/blockers:
+  - Positioning and portfolio narrative may be fragmented across opportunities.
+  - Tracking/follow-up process maturity: Needs verification.
+- Next likely milestone:
+  - Standardized job application pack + tracking workflow (Needs verification).

@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveAgentModelFallbackValues } from "../config/model-input.js";
-import type { AgentDefaultsConfig } from "../config/types.agent-defaults.js";
+import type {
+  AgentDefaultsConfig,
+  EmbeddedPiCriticLoopConfig,
+  EmbeddedPiCriticTaskKind,
+  EmbeddedPiCriticLoopTrigger,
+} from "../config/types.agent-defaults.js";
 import type { OpenClawConfig } from "../config/types.js";
 import {
   normalizeAgentId,
@@ -81,6 +86,52 @@ export function resolveAgentExecutionContract(
   }
   const agentContract = resolveAgentConfig(cfg, agentId)?.embeddedPi?.executionContract;
   return agentContract ?? defaultContract;
+}
+
+export type ResolvedEmbeddedPiCriticLoopConfig = {
+  enabled: boolean;
+  maxRevisions: number;
+  runOnTriggers?: EmbeddedPiCriticLoopTrigger[];
+  runOnTaskKinds?: EmbeddedPiCriticTaskKind[];
+  requireValidation: boolean;
+  diagnostics: "off" | "on";
+};
+
+export function resolveAgentCriticLoopConfig(
+  cfg: OpenClawConfig | undefined,
+  agentId?: string | null,
+): ResolvedEmbeddedPiCriticLoopConfig {
+  const defaults = cfg?.agents?.defaults?.embeddedPi?.criticLoop;
+  const agent =
+    cfg && agentId ? resolveAgentConfig(cfg, agentId)?.embeddedPi?.criticLoop : undefined;
+  const merged: EmbeddedPiCriticLoopConfig = {
+    ...defaults,
+    ...agent,
+  };
+  const rawMaxRevisions = merged.maxRevisions;
+  const maxRevisions =
+    typeof rawMaxRevisions === "number" && Number.isInteger(rawMaxRevisions) && rawMaxRevisions >= 0
+      ? rawMaxRevisions
+      : 2;
+  const runOnTriggers = Array.isArray(merged.runOnTriggers)
+    ? merged.runOnTriggers.filter(
+        (value): value is EmbeddedPiCriticLoopTrigger =>
+          typeof value === "string" && value.length > 0,
+      )
+    : undefined;
+  const runOnTaskKinds = Array.isArray(merged.runOnTaskKinds)
+    ? merged.runOnTaskKinds.filter(
+        (value): value is EmbeddedPiCriticTaskKind => typeof value === "string" && value.length > 0,
+      )
+    : undefined;
+  return {
+    enabled: merged.enabled === true,
+    maxRevisions,
+    requireValidation: merged.requireValidation !== false,
+    diagnostics: merged.diagnostics === "on" ? "on" : "off",
+    ...(runOnTriggers && runOnTriggers.length > 0 ? { runOnTriggers } : {}),
+    ...(runOnTaskKinds && runOnTaskKinds.length > 0 ? { runOnTaskKinds } : {}),
+  };
 }
 
 export function resolveAgentSkillsFilter(

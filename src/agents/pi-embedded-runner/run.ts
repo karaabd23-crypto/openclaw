@@ -5,6 +5,7 @@ import { ensureContextEnginesInitialized } from "../../context-engine/init.js";
 import { resolveContextEngine } from "../../context-engine/registry.js";
 import { emitAgentPlanEvent } from "../../infra/agent-events.js";
 import { sleepWithAbort } from "../../infra/backoff.js";
+import { isDiagnosticFlagEnabled } from "../../infra/diagnostic-flags.js";
 import { formatErrorMessage } from "../../infra/errors.js";
 import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
 import { enqueueCommandInLane } from "../../process/command-queue.js";
@@ -15,6 +16,7 @@ import { isMarkdownCapableMessageChannel } from "../../utils/message-channel.js"
 import { resolveOpenClawAgentDir } from "../agent-paths.js";
 import {
   hasConfiguredModelFallbacks,
+  resolveAgentCriticLoopConfig,
   resolveAgentExecutionContract,
   resolveSessionAgentIds,
   resolveAgentWorkspaceDir,
@@ -80,6 +82,21 @@ import { createEmbeddedRunReplayState, observeReplayMetadata } from "./replay-st
 import { handleAssistantFailover } from "./run/assistant-failover.js";
 import { createEmbeddedRunAuthController } from "./run/auth-controller.js";
 import { runEmbeddedAttemptWithBackend } from "./run/backend.js";
+import {
+  buildControllerDebrief,
+  buildCriticReview,
+  buildRevisionSteer,
+  buildWorkerStepResult,
+  createPlannerOutput,
+  decideCriticControllerAction,
+  inferCriticTaskKind,
+  parseCriticReviewCandidate,
+  shouldRunCriticLoop,
+  type CriticControllerDecision,
+  type CriticPlannerOutput,
+  type CriticReviewOutput,
+  type CriticWorkerStepResult,
+} from "./run/critic-loop.js";
 import { createFailoverDecisionLogger } from "./run/failover-observation.js";
 import { mergeRetryFailoverReason, resolveRunFailoverDecision } from "./run/failover-policy.js";
 import {
@@ -457,6 +474,23 @@ export async function runEmbeddedPiAgent(
         modelId,
       });
       const executionContract = strictAgenticActive ? "strict-agentic" : "default";
+      const criticConfig = resolveAgentCriticLoopConfig(params.config, sessionAgentId);
+      const criticTaskKind = inferCriticTaskKind(params.prompt);
+      const criticDiagnosticsEnabled =
+        criticConfig.diagnostics === "on" &&
+        isDiagnosticFlagEnabled("agents.critic_loop", params.config);
+      const criticLoopEnabled = shouldRunCriticLoop({
+        criticConfig,
+        trigger: params.trigger,
+        taskKind: criticTaskKind,
+      });
+      const criticPlanner: CriticPlannerOutput | undefined = criticLoopEnabled
+        ? createPlannerOutput({
+            task: params.prompt,
+            taskKind: criticTaskKind,
+            stepTitle: "Execute one evidence-backed step",
+          })
+        : undefined;
       const maxPlanningOnlyRetryAttempts = resolvePlanningOnlyRetryLimit(executionContract);
       const maxReasoningOnlyRetryAttempts = DEFAULT_REASONING_ONLY_RETRY_LIMIT;
       const maxEmptyResponseRetryAttempts = DEFAULT_EMPTY_RESPONSE_RETRY_LIMIT;
@@ -482,11 +516,37 @@ export async function runEmbeddedPiAgent(
       let planningOnlyRetryInstruction: string | null = null;
       let reasoningOnlyRetryInstruction: string | null = null;
       let emptyResponseRetryInstruction: string | null = null;
+      let criticRevisionInstruction: string | null = null;
+      let criticRevisionCount = 0;
+      let criticLastWorker: CriticWorkerStepResult | undefined;
+      let criticLastReview: CriticReviewOutput | undefined;
+      let criticLastController: CriticControllerDecision | undefined;
       const ackExecutionFastPathInstruction = resolveAckExecutionFastPathInstruction({
         provider,
         modelId,
         prompt: params.prompt,
       });
+      if (criticPlanner) {
+        emitAgentPlanEvent({
+          runId: params.runId,
+          ...(params.sessionKey ? { sessionKey: params.sessionKey } : {}),
+          data: {
+            phase: "update",
+            title: "Critic loop planner",
+            explanation: `${criticPlanner.task_under_review} (task_kind=${criticTaskKind})`,
+            steps: criticPlanner.steps.map((step) => step.title),
+            source: "critic_loop",
+          },
+        });
+        params.onAgentEvent?.({
+          stream: "critic_loop",
+          data: {
+            phase: "planner",
+            taskKind: criticTaskKind,
+            ...(criticDiagnosticsEnabled ? { planner: criticPlanner } : {}),
+          },
+        });
+      }
       let rateLimitProfileRotations = 0;
       let timeoutCompactionAttempts = 0;
       // Silent-error retry: non-strict-agentic models (e.g. ollama/glm-5.1) can
@@ -674,6 +734,7 @@ export async function runEmbeddedPiAgent(
             planningOnlyRetryInstruction,
             reasoningOnlyRetryInstruction,
             emptyResponseRetryInstruction,
+            criticRevisionInstruction,
           ].filter(
             (value): value is string => typeof value === "string" && value.trim().length > 0,
           );
@@ -1728,83 +1789,230 @@ export async function runEmbeddedPiAgent(
             timedOut,
             attempt,
           });
-          if (
-            nextPlanningOnlyRetryInstruction &&
-            planningOnlyRetryAttempts < maxPlanningOnlyRetryAttempts
-          ) {
-            const planningOnlyText = attempt.assistantTexts.join("\n\n").trim();
-            const planDetails = extractPlanningOnlyPlanDetails(planningOnlyText);
-            if (planDetails) {
-              emitAgentPlanEvent({
-                runId: params.runId,
-                ...(params.sessionKey ? { sessionKey: params.sessionKey } : {}),
-                data: {
-                  phase: "update",
-                  title: "Assistant proposed a plan",
-                  explanation: planDetails.explanation,
-                  steps: planDetails.steps,
-                  source: "planning_only_retry",
-                },
-              });
-              params.onAgentEvent?.({
-                stream: "plan",
-                data: {
-                  phase: "update",
-                  title: "Assistant proposed a plan",
-                  explanation: planDetails.explanation,
-                  steps: planDetails.steps,
-                  source: "planning_only_retry",
-                },
-              });
-            }
-            planningOnlyRetryAttempts += 1;
-            planningOnlyRetryInstruction = nextPlanningOnlyRetryInstruction;
-            log.warn(
-              `planning-only turn detected: runId=${params.runId} sessionId=${params.sessionId} ` +
-                `provider=${provider}/${modelId} contract=${executionContract} configured=${configuredExecutionContract} — retrying ` +
-                `${planningOnlyRetryAttempts}/${maxPlanningOnlyRetryAttempts} with act-now steer`,
-            );
-            continue;
-          }
-          if (
-            !nextPlanningOnlyRetryInstruction &&
-            nextReasoningOnlyRetryInstruction &&
-            reasoningOnlyRetryAttempts < maxReasoningOnlyRetryAttempts
-          ) {
-            reasoningOnlyRetryAttempts += 1;
-            reasoningOnlyRetryInstruction = nextReasoningOnlyRetryInstruction;
-            log.warn(
-              `reasoning-only assistant turn detected: runId=${params.runId} sessionId=${params.sessionId} ` +
-                `provider=${activeErrorContext.provider}/${activeErrorContext.model} — retrying ${reasoningOnlyRetryAttempts}/${maxReasoningOnlyRetryAttempts} ` +
-                `with visible-answer continuation`,
-            );
-            continue;
-          }
-          const reasoningOnlyRetriesExhausted =
-            !nextPlanningOnlyRetryInstruction &&
-            nextReasoningOnlyRetryInstruction &&
-            reasoningOnlyRetryAttempts >= maxReasoningOnlyRetryAttempts;
-          if (
-            !nextPlanningOnlyRetryInstruction &&
-            !nextReasoningOnlyRetryInstruction &&
-            nextEmptyResponseRetryInstruction &&
-            emptyResponseRetryAttempts < maxEmptyResponseRetryAttempts
-          ) {
-            emptyResponseRetryAttempts += 1;
-            emptyResponseRetryInstruction = nextEmptyResponseRetryInstruction;
-            log.warn(
-              `empty response detected: runId=${params.runId} sessionId=${params.sessionId} ` +
-                `provider=${activeErrorContext.provider}/${activeErrorContext.model} — retrying ${emptyResponseRetryAttempts}/${maxEmptyResponseRetryAttempts} ` +
-                `with visible-answer continuation`,
-            );
-            continue;
-          }
           const incompleteTurnText = resolveIncompleteTurnPayloadText({
             payloadCount,
             aborted,
             timedOut,
             attempt,
           });
+          const criticFinalCandidate =
+            !nextPlanningOnlyRetryInstruction &&
+            !nextReasoningOnlyRetryInstruction &&
+            !nextEmptyResponseRetryInstruction &&
+            !incompleteTurnText;
+
+          if (criticLoopEnabled && criticPlanner) {
+            const worker = buildWorkerStepResult({
+              task: criticPlanner.task_under_review,
+              taskKind: criticTaskKind,
+              requireValidation: criticConfig.requireValidation,
+              stepId: criticPlanner.steps[0]?.step_id,
+              workerClaim: finalAssistantVisibleText || attempt.assistantTexts.join("\n\n").trim(),
+              summary:
+                attempt.lastToolError?.error ||
+                (attempt.promptError ? "Prompt run produced an error." : "Attempt completed."),
+              evidence: {
+                assistantTextChars: finalAssistantVisibleText?.length ?? 0,
+                payloadCount,
+                toolCalls: attempt.toolMetas.length,
+                toolNames: attempt.toolMetas.map((entry) => entry.toolName),
+                toolErrors: attempt.lastToolError ? 1 : 0,
+                aborted,
+                timedOut,
+                promptError: Boolean(attempt.promptError),
+                promptErrorSource: attempt.promptErrorSource,
+                incompleteTurn: Boolean(incompleteTurnText),
+                stopReason: attempt.lastAssistant?.stopReason,
+              },
+            });
+            const review = parseCriticReviewCandidate(
+              buildCriticReview({
+                worker,
+                evidence: {
+                  assistantTextChars: finalAssistantVisibleText?.length ?? 0,
+                  payloadCount,
+                  toolCalls: attempt.toolMetas.length,
+                  toolNames: attempt.toolMetas.map((entry) => entry.toolName),
+                  toolErrors: attempt.lastToolError ? 1 : 0,
+                  aborted,
+                  timedOut,
+                  promptError: Boolean(attempt.promptError),
+                  promptErrorSource: attempt.promptErrorSource,
+                  incompleteTurn: Boolean(incompleteTurnText),
+                  stopReason: attempt.lastAssistant?.stopReason,
+                },
+              }),
+            );
+            const controller = decideCriticControllerAction({
+              review,
+              worker,
+              retryCount: criticRevisionCount,
+              maxRetries: criticConfig.maxRevisions,
+              finalCandidate: criticFinalCandidate,
+            });
+            const controllerDebrief = buildControllerDebrief({
+              planner: criticPlanner,
+              worker,
+              review,
+              controller,
+            });
+            criticLastWorker = worker;
+            criticLastReview = review ?? undefined;
+            criticLastController = controller;
+            params.onAgentEvent?.({
+              stream: "critic_loop",
+              data: {
+                phase: "controller",
+                taskKind: criticTaskKind,
+                verdict: controller.review_verdict,
+                action: controller.action,
+                debrief: controllerDebrief,
+                retryCount: controller.retry_count,
+                maxRetries: controller.max_retries,
+                ...(criticDiagnosticsEnabled
+                  ? {
+                      planner: criticPlanner,
+                      worker,
+                      review,
+                      controller,
+                    }
+                  : {}),
+              },
+            });
+            log.info(
+              `[critic-loop] runId=${params.runId} step=${controller.step_id} verdict=${controller.review_verdict} action=${controller.action} retries=${controller.retry_count}/${controller.max_retries}`,
+            );
+            if (criticDiagnosticsEnabled) {
+              log.debug(
+                `[critic-loop:diagnostics] runId=${params.runId} taskKind=${criticTaskKind} workerEvidence=${worker.evidence_collected.join("|")}`,
+              );
+            }
+
+            if (controller.action === "retry") {
+              criticRevisionCount += 1;
+              criticRevisionInstruction = review
+                ? (buildRevisionSteer(review) ??
+                  "Provide evidence-backed revision for the current step.")
+                : "Provide evidence-backed revision for the current step.";
+              continue;
+            }
+
+            if (controller.action === "escalate") {
+              const escalateText = controllerDebrief;
+              return {
+                payloads: [
+                  {
+                    text: `⚠️ Critic loop escalation\n${escalateText}`,
+                    isError: true,
+                  },
+                ],
+                meta: {
+                  durationMs: Date.now() - started,
+                  agentMeta,
+                  aborted,
+                  systemPromptReport: attempt.systemPromptReport,
+                  finalPromptText: attempt.finalPromptText,
+                  finalAssistantVisibleText,
+                  finalAssistantRawText,
+                  replayInvalid: true,
+                  livenessState: "blocked",
+                  criticLoop: {
+                    enabled: true,
+                    taskKind: criticTaskKind,
+                    stepId: worker.step_id,
+                    revisions: criticRevisionCount,
+                    planner: criticPlanner,
+                    worker,
+                    ...(review ? { review } : {}),
+                    controller,
+                  },
+                },
+                didSendViaMessagingTool: attempt.didSendViaMessagingTool,
+                didSendDeterministicApprovalPrompt: attempt.didSendDeterministicApprovalPrompt,
+                messagingToolSentTexts: attempt.messagingToolSentTexts,
+                messagingToolSentMediaUrls: attempt.messagingToolSentMediaUrls,
+                messagingToolSentTargets: attempt.messagingToolSentTargets,
+                successfulCronAdds: attempt.successfulCronAdds,
+              };
+            }
+
+            criticRevisionInstruction = null;
+          }
+
+          if (!criticLoopEnabled) {
+            if (
+              nextPlanningOnlyRetryInstruction &&
+              planningOnlyRetryAttempts < maxPlanningOnlyRetryAttempts
+            ) {
+              const planningOnlyText = attempt.assistantTexts.join("\n\n").trim();
+              const planDetails = extractPlanningOnlyPlanDetails(planningOnlyText);
+              if (planDetails) {
+                emitAgentPlanEvent({
+                  runId: params.runId,
+                  ...(params.sessionKey ? { sessionKey: params.sessionKey } : {}),
+                  data: {
+                    phase: "update",
+                    title: "Assistant proposed a plan",
+                    explanation: planDetails.explanation,
+                    steps: planDetails.steps,
+                    source: "planning_only_retry",
+                  },
+                });
+                params.onAgentEvent?.({
+                  stream: "plan",
+                  data: {
+                    phase: "update",
+                    title: "Assistant proposed a plan",
+                    explanation: planDetails.explanation,
+                    steps: planDetails.steps,
+                    source: "planning_only_retry",
+                  },
+                });
+              }
+              planningOnlyRetryAttempts += 1;
+              planningOnlyRetryInstruction = nextPlanningOnlyRetryInstruction;
+              log.warn(
+                `planning-only turn detected: runId=${params.runId} sessionId=${params.sessionId} ` +
+                  `provider=${provider}/${modelId} contract=${executionContract} configured=${configuredExecutionContract} — retrying ` +
+                  `${planningOnlyRetryAttempts}/${maxPlanningOnlyRetryAttempts} with act-now steer`,
+              );
+              continue;
+            }
+            if (
+              !nextPlanningOnlyRetryInstruction &&
+              nextReasoningOnlyRetryInstruction &&
+              reasoningOnlyRetryAttempts < maxReasoningOnlyRetryAttempts
+            ) {
+              reasoningOnlyRetryAttempts += 1;
+              reasoningOnlyRetryInstruction = nextReasoningOnlyRetryInstruction;
+              log.warn(
+                `reasoning-only assistant turn detected: runId=${params.runId} sessionId=${params.sessionId} ` +
+                  `provider=${activeErrorContext.provider}/${activeErrorContext.model} — retrying ${reasoningOnlyRetryAttempts}/${maxReasoningOnlyRetryAttempts} ` +
+                  `with visible-answer continuation`,
+              );
+              continue;
+            }
+            if (
+              !nextPlanningOnlyRetryInstruction &&
+              !nextReasoningOnlyRetryInstruction &&
+              nextEmptyResponseRetryInstruction &&
+              emptyResponseRetryAttempts < maxEmptyResponseRetryAttempts
+            ) {
+              emptyResponseRetryAttempts += 1;
+              emptyResponseRetryInstruction = nextEmptyResponseRetryInstruction;
+              log.warn(
+                `empty response detected: runId=${params.runId} sessionId=${params.sessionId} ` +
+                  `provider=${activeErrorContext.provider}/${activeErrorContext.model} — retrying ${emptyResponseRetryAttempts}/${maxEmptyResponseRetryAttempts} ` +
+                  `with visible-answer continuation`,
+              );
+              continue;
+            }
+          }
+
+          const reasoningOnlyRetriesExhausted =
+            !nextPlanningOnlyRetryInstruction &&
+            nextReasoningOnlyRetryInstruction &&
+            reasoningOnlyRetryAttempts >= maxReasoningOnlyRetryAttempts;
           if (reasoningOnlyRetriesExhausted && !finalAssistantVisibleText) {
             log.warn(
               `reasoning-only retries exhausted: runId=${params.runId} sessionId=${params.sessionId} ` +
@@ -2113,6 +2321,18 @@ export async function runEmbeddedPiAgent(
               },
               contextManagement:
                 autoCompactionCount > 0 ? { lastTurnCompactions: autoCompactionCount } : undefined,
+              criticLoop: criticLoopEnabled
+                ? {
+                    enabled: true,
+                    taskKind: criticTaskKind,
+                    stepId: criticPlanner?.steps[0]?.step_id,
+                    revisions: criticRevisionCount,
+                    ...(criticPlanner ? { planner: criticPlanner } : {}),
+                    ...(criticLastWorker ? { worker: criticLastWorker } : {}),
+                    ...(criticLastReview ? { review: criticLastReview } : {}),
+                    ...(criticLastController ? { controller: criticLastController } : {}),
+                  }
+                : undefined,
             },
             didSendViaMessagingTool: attempt.didSendViaMessagingTool,
             didSendDeterministicApprovalPrompt: attempt.didSendDeterministicApprovalPrompt,

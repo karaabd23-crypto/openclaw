@@ -2,37 +2,40 @@
 
 ## Professional identity
 
-- Maintainer/builder of OpenClaw-style self-hosted assistant systems.
-- Works across gateway core, plugins, and companion app surfaces.
+- Name: Kara Abdolmaleki.
+- Preferred name: Kara.
+- Gender: Male.
+- Profile: English exam-prep educator/operator building digital education businesses and AI-assisted execution workflows.
+- Profile: English exam-prep educator/operator building digital education businesses and AI-assisted execution workflows across business, content, social, and career operations.
 
 ## Core skills
 
-- TypeScript/Node gateway development.
-- Plugin architecture and SDK boundary design.
-- Multi-channel messaging integration.
-- CLI/tooling workflows.
-- Test/lint/typecheck operations in monorepos.
+- IELTS/CELPIP/ESL teaching and exam-prep guidance.
+- Structured execution planning for content, offers, and systems.
+- AI-assisted workflow building in VS Code/Codex/OpenClaw.
+- AI-assisted workflow building in VS Code/Codex/OpenClaw for business and life operations.
 
 ## Areas of expertise
 
-- Self-hosted agent runtime patterns.
-- Session routing and channel bridging.
-- Secure defaults (pairing, allowlists, sandboxing).
-- Contract-first plugin integration.
+- Exam-prep content planning and educational service design.
+- Turning chat/session knowledge into structured operating context.
+- Business-ops direction for offers, funnels, and workflow constraints.
 
 ## Current transition/growth areas
 
-- Mobile hardening workflows (iOS/Android).
-- Setup/onboarding reliability.
-- Memory reliability and fallback behavior.
+- Moving from service-heavy delivery to productized and automated systems.
+- Improving coding depth for website/system implementation.
+- Building local-first + remote escalation model-routing operations.
 
 ## Working style preferences
 
-- Terminal-first execution.
-- Rules-first development (`AGENTS.md`, scoped guides).
-- Small, focused changes with validation gates.
+- Direct, concise, execution-first communication.
+- Bullet-point outputs over long prose.
+- Prefer practical plans and concrete next steps.
+- Wants aggressive critique on weak ideas and wasted effort.
 
 ## Known constraints
 
-- Large integration surface increases coordination and regression risk.
-- Personal/business profile details beyond repo evidence: Needs verification.
+- No fake certainty, hallucinated facts, or invented metrics.
+- No unnecessary complexity or aesthetics over function.
+- Sensitive data must not be stored/exposed.

@@ -205,6 +205,39 @@ export const AgentDefaultsSchema = z
           .union([z.literal("trusted"), z.literal("sanitize"), z.literal("ignore")])
           .optional(),
         executionContract: z.union([z.literal("default"), z.literal("strict-agentic")]).optional(),
+        criticLoop: z
+          .object({
+            enabled: z.boolean().optional(),
+            maxRevisions: z.number().int().nonnegative().optional(),
+            runOnTriggers: z
+              .array(
+                z.union([
+                  z.literal("cron"),
+                  z.literal("heartbeat"),
+                  z.literal("manual"),
+                  z.literal("memory"),
+                  z.literal("overflow"),
+                  z.literal("user"),
+                ]),
+              )
+              .optional(),
+            runOnTaskKinds: z
+              .array(
+                z.union([
+                  z.literal("code_changes"),
+                  z.literal("website_edits"),
+                  z.literal("seo_changes"),
+                  z.literal("workflow_automation"),
+                  z.literal("content_generation"),
+                  z.literal("general"),
+                ]),
+              )
+              .optional(),
+            requireValidation: z.boolean().optional(),
+            diagnostics: z.union([z.literal("off"), z.literal("on")]).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),

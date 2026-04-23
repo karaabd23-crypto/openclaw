@@ -127,6 +127,78 @@ export type EmbeddedPiRunMeta = {
   toolSummary?: ToolSummaryTrace;
   completion?: CompletionTrace;
   contextManagement?: ContextManagementTrace;
+  criticLoop?: {
+    enabled: boolean;
+    taskKind?:
+      | "code_changes"
+      | "website_edits"
+      | "seo_changes"
+      | "workflow_automation"
+      | "content_generation"
+      | "general";
+    stepId?: string;
+    revisions: number;
+    planner?: {
+      goal: string;
+      task_under_review: string;
+      steps: Array<{
+        step_id: string;
+        title: string;
+        description: string;
+        expected_evidence: string[];
+        status: "pending" | "in_progress" | "done";
+      }>;
+      risks: string[];
+      constraints: string[];
+      acceptance_criteria: string[];
+    };
+    worker?: {
+      task_under_review: string;
+      step_id: string;
+      actions_taken: string[];
+      files_changed: string[];
+      commands_run: string[];
+      artifacts: string[];
+      claims: string[];
+      uncertainties: string[];
+      suggested_next_step: string;
+      worker_claim: string;
+      summary: string;
+      evidence_collected: string[];
+      validations_run: string[];
+      validations_passed: string[];
+      had_errors: boolean;
+    };
+    review?: {
+      task_under_review: string;
+      step_id: string;
+      worker_claim: string;
+      evidence_checked: string[];
+      problems_found: Array<{
+        code: string;
+        message: string;
+        risk: "low" | "medium" | "high";
+      }>;
+      missing_evidence: string[];
+      risk_level: "low" | "medium" | "high";
+      verdict: "pass" | "revise" | "stop";
+      revision_instructions: string[];
+      confidence: number;
+    };
+    controller?: {
+      current_step_id: string;
+      decision: "continue" | "retry" | "stop" | "complete";
+      next_action: string;
+      task_under_review: string;
+      step_id: string;
+      review_verdict: "pass" | "revise" | "stop";
+      action: "continue" | "retry" | "escalate" | "complete";
+      approved_completion: boolean;
+      retry_count: number;
+      max_retries: number;
+      reason: string;
+    };
+  };
 };
 
 export type EmbeddedPiRunResult = {

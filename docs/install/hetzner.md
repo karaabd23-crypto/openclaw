@@ -60,6 +60,36 @@ For the generic Docker flow, see [Docker](/install/docker).
 
 ---
 
+## Scripted migration path
+
+If you already have a working local OpenClaw state and want to migrate it to Hetzner quickly, use:
+
+```bash
+VPS_IP=YOUR_VPS_IP \
+SSH_USER=root \
+SSH_PORT=22 \
+OPENCLAW_TZ=America/Vancouver \
+bash scripts/openclaw-hetzner-deploy.sh
+```
+
+What the script does:
+
+- verifies SSH connectivity
+- uploads `~/.openclaw` (or `LOCAL_STATE_DIR`)
+- installs Docker if missing
+- clones/updates `openclaw/openclaw`
+- creates a timestamped remote backup before replacing existing state
+- runs `openclaw doctor --fix --non-interactive` in Docker
+- starts the gateway with loopback-only host port exposure
+
+Useful toggles:
+
+- `SKIP_STATE_UPLOAD=1` to redeploy without copying local state
+- `REMOTE_BRANCH=main` to pin a branch
+- `OPENCLAW_GATEWAY_PORT` and `OPENCLAW_BRIDGE_PORT` to change host ports
+
+---
+
 ## What you need
 
 - Hetzner VPS with root access

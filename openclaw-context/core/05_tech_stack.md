@@ -3,56 +3,58 @@
 ## Languages/frameworks
 
 - Comfortable:
-  - TypeScript (ESM), Node.js.
-  - Vitest.
-  - Zod/TypeBox boundary validation.
-  - Swift (Swabble + iOS/macOS surfaces).
-  - Kotlin/Jetpack Compose (Android surfaces).
+  - Content/operations systems and prompt-driven workflows.
 - Learning:
-  - Needs verification.
+  - JavaScript/TypeScript for practical automation and website tasks.
+  - Astro website implementation.
 - Needs support:
-  - Needs verification.
+  - Complex multi-file architecture/debugging without agent support.
 
 ## Hosting/deployment
 
 - Comfortable:
-  - Local/self-hosted gateway runtime.
-  - Node daemon/service workflows.
-  - Docker-supported workflows in docs.
+  - Working locally in VS Code + WSL.
 - Learning:
-  - Remote/VPS operator depth: Needs verification.
+  - Ongoing Hetzner operations and hardening for OpenClaw.
 - Needs support:
-  - Needs verification.
+  - Production hosting architecture and rollout hardening.
+  - Safe deploy flow from VS Code repo to Hetzner runtime image.
+
+## OpenClaw runtime topology (authoritative)
+
+- Live runtime host: Hetzner VPS `195.201.123.118`.
+- Access path from local machine: SSH tunnel to `127.0.0.1:18789`.
+- Local OpenClaw runtime service is intentionally disabled/masked.
+- Runtime incident details and guardrails:
+  - `openclaw-context/active/10_hetzner_cutover_incident_2026-04-22.md`.
 
 ## Editors/tools
 
 - Comfortable:
-  - VS Code + terminal workflow.
-  - `pnpm` (primary), Bun-compatible paths.
-  - Xcode/Android Studio workflows.
+  - VS Code.
+  - WSL.
+  - Codex/OpenClaw workflow.
 - Learning:
-  - Needs verification.
+  - Local LLM routing with Ollama/Llama.
 - Needs support:
-  - Needs verification.
+  - Advanced git/release workflows when risk is high.
 
 ## Platforms
 
 - Comfortable:
-  - Gateway targets macOS/Linux/Windows.
-  - iOS and Android node development.
+  - Web-first execution for business/content workflows.
 - Learning:
-  - Needs verification.
+  - WhatsApp/Telegram operational channel strategy.
 - Needs support:
-  - Needs verification.
+  - Channel automation architecture at scale.
 
 ## Analytics/payments/integrations
 
 - Comfortable:
-  - Channel integrations.
-  - Model-provider integrations.
-  - Plugin integrations.
+  - GitHub as code/workflow source of truth.
 - Learning:
-  - Analytics stack details: Needs verification.
-  - Payment stack details: Needs verification.
+  - Netlify deployment operations.
+  - Stripe integration for paid offers.
+  - Analytics instrumentation for funnel decisions.
 - Needs support:
-  - Needs verification.
+  - Production-grade funnel analytics and payment flow QA.

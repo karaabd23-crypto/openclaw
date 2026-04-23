@@ -64,6 +64,47 @@ describe("agent defaults schema", () => {
     expect(result.embeddedPi?.executionContract).toBe("strict-agentic");
   });
 
+  it("accepts embeddedPi.criticLoop on defaults and agent entries", () => {
+    const defaults = AgentDefaultsSchema.parse({
+      embeddedPi: {
+        criticLoop: {
+          enabled: true,
+          maxRevisions: 2,
+          runOnTriggers: ["user", "manual"],
+          runOnTaskKinds: ["code_changes", "content_generation"],
+          requireValidation: true,
+          diagnostics: "on",
+        },
+      },
+    })!;
+    const agent = AgentEntrySchema.parse({
+      id: "ops",
+      embeddedPi: {
+        criticLoop: {
+          enabled: false,
+          maxRevisions: 1,
+          runOnTriggers: ["cron"],
+          runOnTaskKinds: ["general"],
+          requireValidation: false,
+          diagnostics: "off",
+        },
+      },
+    });
+
+    expect(defaults.embeddedPi?.criticLoop?.enabled).toBe(true);
+    expect(defaults.embeddedPi?.criticLoop?.maxRevisions).toBe(2);
+    expect(defaults.embeddedPi?.criticLoop?.runOnTaskKinds).toEqual([
+      "code_changes",
+      "content_generation",
+    ]);
+    expect(defaults.embeddedPi?.criticLoop?.requireValidation).toBe(true);
+    expect(defaults.embeddedPi?.criticLoop?.diagnostics).toBe("on");
+    expect(agent.embeddedPi?.criticLoop?.runOnTriggers).toEqual(["cron"]);
+    expect(agent.embeddedPi?.criticLoop?.runOnTaskKinds).toEqual(["general"]);
+    expect(agent.embeddedPi?.criticLoop?.requireValidation).toBe(false);
+    expect(agent.embeddedPi?.criticLoop?.diagnostics).toBe("off");
+  });
+
   it("accepts focused contextLimits on defaults and agent entries", () => {
     const defaults = AgentDefaultsSchema.parse({
       contextLimits: {

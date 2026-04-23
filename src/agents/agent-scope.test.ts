@@ -6,6 +6,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import {
   hasConfiguredModelFallbacks,
   resolveAgentConfig,
+  resolveAgentCriticLoopConfig,
   resolveAgentDir,
   resolveAgentEffectiveModelPrimary,
   resolveAgentExplicitModelPrimary,
@@ -25,6 +26,66 @@ afterEach(() => {
 });
 
 describe("resolveAgentConfig", () => {
+  it("resolves critic-loop defaults and per-agent overrides", () => {
+    const cfg: OpenClawConfig = {
+      agents: {
+        defaults: {
+          embeddedPi: {
+            criticLoop: {
+              enabled: true,
+              maxRevisions: 2,
+              runOnTriggers: ["user", "manual"],
+              runOnTaskKinds: ["code_changes", "workflow_automation"],
+              requireValidation: true,
+              diagnostics: "on",
+            },
+          },
+        },
+        list: [
+          {
+            id: "ops",
+            embeddedPi: {
+              criticLoop: {
+                enabled: false,
+                maxRevisions: 1,
+                runOnTriggers: ["cron"],
+                runOnTaskKinds: ["content_generation"],
+                requireValidation: false,
+                diagnostics: "off",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    expect(resolveAgentCriticLoopConfig(cfg, "main")).toEqual({
+      enabled: true,
+      maxRevisions: 2,
+      runOnTriggers: ["user", "manual"],
+      runOnTaskKinds: ["code_changes", "workflow_automation"],
+      requireValidation: true,
+      diagnostics: "on",
+    });
+    expect(resolveAgentCriticLoopConfig(cfg, "ops")).toEqual({
+      enabled: false,
+      maxRevisions: 1,
+      runOnTriggers: ["cron"],
+      runOnTaskKinds: ["content_generation"],
+      requireValidation: false,
+      diagnostics: "off",
+    });
+  });
+
+  it("uses safe critic-loop defaults when config is absent", () => {
+    expect(resolveAgentCriticLoopConfig(undefined, "main")).toEqual({
+      enabled: false,
+      maxRevisions: 2,
+      requireValidation: true,
+      diagnostics: "off",
+    });
+  });
+
   it("should return undefined when no agents config exists", () => {
     const cfg: OpenClawConfig = {};
     const result = resolveAgentConfig(cfg, "main");

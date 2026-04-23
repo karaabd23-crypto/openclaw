@@ -2,6 +2,7 @@ import type { ChatType } from "../channels/chat-type.js";
 import type {
   AgentContextLimitsConfig,
   AgentDefaultsConfig,
+  EmbeddedPiCriticLoopConfig,
   EmbeddedPiExecutionContract,
 } from "./types.agent-defaults.js";
 import type {
@@ -111,6 +112,8 @@ export type AgentConfig = {
   embeddedPi?: {
     /** Optional per-agent execution contract override. */
     executionContract?: EmbeddedPiExecutionContract;
+    /** Optional per-agent critic-loop override. */
+    criticLoop?: EmbeddedPiCriticLoopConfig;
   };
   /** Optional per-agent sandbox overrides. */
   sandbox?: AgentSandboxConfig;

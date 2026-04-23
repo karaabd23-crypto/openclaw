@@ -2,21 +2,58 @@
 
 ## Quick wins
 
-- Run `pnpm check:changed` and capture failures/actions in one issue comment.
-- Execute memory QA cases in `qa/scenarios/memory/` and record pass/fail deltas.
-- Build a short top-channel risk list from `CHANGELOG.md` + `docs/channels/troubleshooting.md`.
+- Run runtime preflight before any ops work:
+  - `systemctl --user status openclaw-gateway.service`
+  - `systemctl --user status openclaw-hetzner-tunnel.service`
+  - `curl -fsS http://127.0.0.1:18789/healthz`
+- Read and follow `active/10_hetzner_cutover_incident_2026-04-22.md`.
+- Re-run memory prompt and verify output includes:
+  - Kara Abdolmaleki
+  - IELTS Corner
+  - CELPIP Corner
+- Choose and record 4 decisions:
+  - primary student
+  - core outcome
+  - main offer type
+  - one upsell
+- Update `core/02_businesses_and_offers.md` with chosen offer structure.
+- Draft one Substack post outline and 3 X/social derivative posts from same topic.
 
 ## Medium tasks
 
-- Convert Android remaining hardening checklist item into explicit tracked tasks.
-- Run iOS beta checklist once and document exact failure points, if any.
-- Create one PR to reduce the slowest/flakiest touched test lane.
+- Add a weekly runtime-integrity check:
+  - confirm local gateway remains masked/inactive
+  - confirm tunnel service is active
+  - confirm Hetzner container is healthy
+- Write one IELTS offer matrix:
+  - target student
+  - problem
+  - promised outcome
+  - format
+  - components
+  - turnaround/duration
+  - price placeholder
+  - upsell
+  - exclusions
+- Define one concrete conversion path:
+  - content piece
+  - CTA
+  - landing/booking step
+  - payment step
+  - follow-up step
+- Draft CELPIP vs IELTS scope split in one page.
+- Create job application tracker fields and add first 5 target roles.
 
 ## Deeper tasks
 
-- Propose a memory plugin/fallback policy document for maintainer review.
-- Propose a quarterly roadmap draft across core/plugins/channels/mobile.
-- Define business offers/pricing with owner-confirmed data (Needs verification).
+- Process chat export into session summaries under `archive/`.
+- Add a "runtime topology check" step to all handoff templates.
+- Build weekly operating cadence:
+  - top 3 deliverables
+  - ship log
+  - blockers
+  - adjustments
+- Plan local-first model routing pilot review using weekly report template.
 
 ## Weekly Usage Report Template (Model Routing Policy v1)
 

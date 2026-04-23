@@ -17,6 +17,36 @@ import type { MemorySearchConfig } from "./types.tools.js";
 
 export type AgentContextInjection = "always" | "continuation-skip";
 export type EmbeddedPiExecutionContract = "default" | "strict-agentic";
+export type EmbeddedPiCriticLoopTrigger =
+  | "cron"
+  | "heartbeat"
+  | "manual"
+  | "memory"
+  | "overflow"
+  | "user";
+
+export type EmbeddedPiCriticTaskKind =
+  | "code_changes"
+  | "website_edits"
+  | "seo_changes"
+  | "workflow_automation"
+  | "content_generation"
+  | "general";
+
+export type EmbeddedPiCriticLoopConfig = {
+  /** Enable the planner/worker/critic/controller loop for this agent scope. Default: false. */
+  enabled?: boolean;
+  /** Maximum revise retries per step before escalation. Default: 2. */
+  maxRevisions?: number;
+  /** Run critic loop only for these run triggers when set. */
+  runOnTriggers?: EmbeddedPiCriticLoopTrigger[];
+  /** Run critic loop only for these inferred task kinds when set. */
+  runOnTaskKinds?: EmbeddedPiCriticTaskKind[];
+  /** Require task-kind validation command evidence before completion when applicable. Default: true. */
+  requireValidation?: boolean;
+  /** Emit detailed critic-loop diagnostics when OPENCLAW_DIAGNOSTICS includes agents.critic_loop. */
+  diagnostics?: "off" | "on";
+};
 
 export type AgentModelEntryConfig = {
   alias?: string;
@@ -277,6 +307,8 @@ export type AgentDefaultsConfig = {
      * - strict-agentic: on OpenAI/OpenAI Codex GPT-5-family runs, keep acting until hitting a real blocker
      */
     executionContract?: EmbeddedPiExecutionContract;
+    /** Optional deterministic critic-loop policy (planner/worker/critic/controller). */
+    criticLoop?: EmbeddedPiCriticLoopConfig;
   };
   /** Vector memory search configuration (per-agent overrides supported). */
   memorySearch?: MemorySearchConfig;

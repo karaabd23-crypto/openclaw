@@ -17,6 +17,31 @@
     - `127.0.0.1:18790 -> 195.201.123.118:28790`
     - service: `openclaw-hetzner-tunnel.service` (user systemd)
 
+## Routing Repair Addendum (2026-04-23)
+
+- Incident: OpenClaw was still behaving slow and unfocused even after prior local-first model changes.
+- Root causes confirmed:
+  - `plugins.entries.task-router.enabled=true` was still overriding general tasks back to GitHub Copilot / Codex lanes.
+  - main-session state `agent:main:main` had persisted `providerOverride=github-copilot`, `modelOverride=gpt-5.4-mini`, and `authProfileOverride=github-copilot:github`.
+  - runtime config pointed at `ollama/qwen2.5-coder:7b`, but the live Ollama server did not actually have that model installed; real inventory exposed `qwen2.5:7b`, `llama3.2:3b-local`, `llama3.2:3b`, `llama3.2:1b`, and `nomic-embed-text:latest`.
+- Resolution completed on Hetzner:
+  - disabled `task-router` in `/root/.openclaw/openclaw.json`
+  - restarted gateway until plugin list dropped from 6 to 5 plugins (task-router removed)
+  - cleared persisted main-session overrides in `/root/.openclaw/agents/main/sessions/sessions.json`
+  - moved compaction model to local Ollama: `agents.defaults.compaction.model = ollama/qwen2.5:7b`
+  - kept active-memory on local Ollama: `plugins.entries.active-memory.config.model = ollama/qwen2.5:7b`
+  - retargeted both main and sub-agent defaults to the actually installed model:
+    - `agents.defaults.model.primary = ollama/qwen2.5:7b`
+    - `agents.defaults.model.fallbacks = [ollama/llama3.2:3b-local, ollama/llama3.2:3b, ollama/llama3.2:1b]`
+    - `agents.defaults.subagents.model.primary = ollama/qwen2.5:7b`
+    - `agents.defaults.subagents.model.fallbacks = [ollama/llama3.2:3b-local, ollama/llama3.2:3b, ollama/llama3.2:1b]`
+  - cleared stale Ollama cooldown state in `/root/.openclaw/agents/main/agent/auth-state.json`
+- Validation completed:
+  - gateway startup now logs `agent model: ollama/qwen2.5:7b`
+  - persisted successful probe session `/root/.openclaw/agents/main/sessions/f01cc590-1dd1-45fd-b0a0-f525bd2bb977.jsonl` returned `AUDIT-OK`
+  - that successful turn recorded `provider=ollama`, `model=qwen2.5:7b`, `api=ollama`, `fallbackUsed=false`
+  - gateway-side `agent` RPC completed in `55ms` for the repaired path; end-to-end CLI wrapper remained slower due session/wrapper overhead, not cloud failover
+
 ## Mandatory Runtime Guardrail (All Future Agents)
 
 - Do not start or install any local OpenClaw runtime service on the operator machine.
@@ -45,26 +70,6 @@
 - Read this file before making changes related to hosting, Telegram, autonomy, memory, or cost controls for this user.
 - Treat this as the continuity doc for Codex, Claude, Copilot, and any other repo-operating agent.
 - Keep this file updated when you change runtime topology, credentials wiring, ports, or operational policy.
-
-## Status Update (2026-04-23, VS Code Agent Handoff Refresh)
-
-- Local model context windows were raised:
-  - `ollama/llama3.2:1b` => `65536`
-  - `ollama/llama3.2:3b` => `65536`
-  - `ollama/llama3.2:3b-local` => `65536`
-  - `ollama/qwen2.5:7b` => `32768`
-- Runtime default model policy is now ultra-local and cost-minimizing:
-  - `agents.defaults.model.primary = ollama/llama3.2:1b`
-  - `agents.defaults.model.fallbacks = []`
-  - `agents.defaults.thinkingDefault = off`
-  - sub-agents also default to local (`ollama/llama3.2:1b`) with no fallbacks.
-- Copilot auth reality:
-  - The `github-copilot` plugin is bundled and loaded in the runtime image.
-  - Hetzner runtime currently has no GitHub Copilot auth profile and no `COPILOT_GITHUB_TOKEN`/`GH_TOKEN`/`GITHUB_TOKEN` env token.
-  - VS Code-side agent authentication does not automatically transfer to Hetzner runtime.
-  - Direct Copilot device-code request attempts from Hetzner currently return GitHub `HTTP 503` from `/login/device/code` (transient external dependency issue).
-- Git remotes:
-  - Hetzner `/root/openclaw` `origin` is now correctly set to `https://github.com/karaabd23-crypto/openclaw.git` (mismatch issue resolved).
 
 ## Session Outcome (What Was Done)
 
@@ -138,19 +143,12 @@
   - Moved active-memory model off OpenAI to local Ollama:
     - `plugins.entries.active-memory.config.model = ollama/qwen2.5:7b`
   - Restarted gateway and verified health + live status with successful local test turn (`openclaw agent --agent main` returned `OK` on `ollama/qwen2.5:7b` with `requestShaping.thinking=off`).
-- Applied chat-distillation + memory reliability update (2026-04-23):
-  - Parsed preserved session history from live Hetzner sessions and migrated local snapshot.
-  - Wrote distilled directive summary to:
-    - `openclaw-context/archive/2026-04-23_vscode_chat_distillation.md`
-    - `memory/2026-04-23.md`
-    - appended update block in `MEMORY.md`
-    - appended priority correction block in `USER.md`
-  - Switched memory embeddings provider from OpenAI to local Ollama to avoid quota failures:
-    - `agents.defaults.memorySearch.provider = ollama`
-    - `agents.defaults.memorySearch.model = nomic-embed-text`
-    - `agents.defaults.memorySearch.remote.baseUrl = http://172.17.0.1:11434`
-    - `agents.defaults.memorySearch.fallback = none`
-  - Verified local embeddings and successful memory indexing/search post-change.
+- Applied routing and session override repair (2026-04-23):
+  - disabled `task-router` because it was still force-routing general work to GitHub Copilot and OpenAI Codex despite local-first defaults
+  - cleared main-session persisted provider/model/auth-profile overrides so `agent:main:main` could follow runtime defaults again
+  - corrected the live Ollama target from missing `ollama/qwen2.5-coder:7b` to installed `ollama/qwen2.5:7b`
+  - moved compaction + active-memory to `ollama/qwen2.5:7b`
+  - verified a persisted successful `AUDIT-OK` turn on `provider=ollama`, `model=qwen2.5:7b`, `fallbackUsed=false`
 
 ## Verified Current Runtime State (Last Check)
 
@@ -160,30 +158,26 @@
 - State path: `/root/.openclaw`
 - Container: `openclaw-openclaw-gateway-1`
 - Health: `Up ... (healthy)`
-- Default model: `ollama/llama3.2:1b` (`local-main`)
-- Fallbacks: `[]` (none configured)
-- Thinking default: `off`
-- Local context windows:
-  - `llama3.2:1b => 65536`
-  - `llama3.2:3b => 65536`
-  - `llama3.2:3b-local => 65536`
-  - `qwen2.5:7b => 32768`
+- Default model: `ollama/qwen2.5:7b`
+- Fallbacks: `ollama/llama3.2:3b-local`, `ollama/llama3.2:3b`, `ollama/llama3.2:1b`
+- Thinking default: `low`
 - Per-model thinking overrides:
   - `ollama/qwen2.5:7b => off`
+  - `ollama/llama3.2:3b-local => off`
   - `ollama/llama3.2:3b => off`
 - Sub-agent model policy:
-  - primary `ollama/llama3.2:1b`
-  - fallback `[]`
+  - primary `ollama/qwen2.5:7b`
+  - fallbacks `ollama/llama3.2:3b-local`, `ollama/llama3.2:3b`, `ollama/llama3.2:1b`
   - `maxSpawnDepth=2`, `maxChildrenPerAgent=4`, `runTimeoutSeconds=900`, `maxConcurrent=10`
-- Embedded Pi execution contract: `default`
-- Active-memory model: `ollama/llama3.2:1b`
-- Memory search embeddings:
-  - provider `ollama`
-  - model `nomic-embed-text`
-  - remote base URL `http://172.17.0.1:11434`
+- Embedded Pi execution contract: `strict-agentic`
+- Active-memory model: `ollama/qwen2.5:7b`
+- Compaction model: `ollama/qwen2.5:7b`
 - Telegram session pins verified on local model:
   - `agent:main:telegram:direct:232973295 -> ollama/qwen2.5:7b`
   - `agent:main:telegram:slash:232973295 -> ollama/qwen2.5:7b`
+- Main session override state:
+  - `agent:main:main` Copilot override cleared
+  - `task-router` disabled
 - Browser runtime config:
   - `browser.headless=true`
   - `browser.noSandbox=true`
@@ -197,7 +191,6 @@
 - Auth profiles:
   - `ollama:manual` (marker)
   - `openai:default` (API key profile in auth store)
-  - no `github-copilot:*` auth profile yet
 - `.env` values:
   - `OPENCLAW_GATEWAY_BIND=lan`
   - `OPENCLAW_GATEWAY_PORT=127.0.0.1:28789`
@@ -248,14 +241,17 @@
    - `google-workspace` MCP command path now resolves (`/home/node/.local/bin/uvx`) and the server is enabled.
    - If MCP startup fails later, debug `uvx workspace-mcp` runtime/env/OAuth state rather than path resolution.
 
+- Latest clean end-to-end smoke is still pending because wrapper runs hit unrelated session-lock and Telegram secret-resolution issues rather than MCP auth/path failures.
+
 8. Complexity auto-routing limitations:
    - Current runtime version does not expose a native complexity threshold router (for example "switch to model X when task is hard").
-   - Practical policy is local-first defaults + explicit sub-agent escalation + OpenAI fallback chain.
-   - If a session was previously pinned to legacy `codex-cli/*`, reset it with `/model local-main` (or any supported model alias) in that session.
 
-9. IELTS/CELPIP execution gap (non-technical):
-   - Both IELTS and CELPIP are active business tracks, but offer/funnel assets are still partially specified in context files.
-   - CELPIP currently has stronger near-term monetization potential; do not deprioritize it.
+- Practical policy is local-first defaults + explicit session choice when cloud models are wanted.
+- If a session was previously pinned to legacy `codex-cli/*`, reset it with `/model local-main` (or any supported model alias) in that session.
+
+9. IELTS business execution gap (non-technical):
+   - IELTS Corner remains the primary revenue project, but offer/funnel assets are still partially specified in context files.
+   - Keep CELPIP as secondary until one IELTS conversion path is shipping consistently.
 
 10. Google Analytics and AdSense access gap (AUDIT 2026-04-23):
     - IELTScorner site has GA4 (`G-G0WCV3WJ44`) and AdSense (`ca-pub-5615542310815721`) already embedded in the site code.
@@ -276,69 +272,78 @@
     - The Copilot agent (this session) fills this gap in VS Code sessions.
     - For Hetzner-side OpenClaw to act in VS Code: no path currently exists without a VS Code extension MCP server.
 
-13. GitHub Copilot auth bridge gap (AUDIT 2026-04-23):
-    - Desired state: OpenClaw on Hetzner should use GitHub Copilot subscription before OpenAI spend.
-    - Current state: no Copilot token/auth profile exists on Hetzner runtime.
-    - VS Code-side Copilot auth is not automatically reusable by Hetzner runtime.
-    - Runtime-side device login currently blocked by external GitHub `HTTP 503` on device-code endpoint.
-    - Fix path:
-      - retry `openclaw models auth login-github-copilot` directly on Hetzner when endpoint is healthy; or
-      - configure `copilot-proxy` with a reachable `/v1` bridge from VS Code to Hetzner.
+13. Hetzner git remote mismatch (URGENT - AUDIT 2026-04-23):
+    - Local repo `origin` now points to `karaabd23-crypto/openclaw` (personal fork).
+    - Hetzner `/root/openclaw` `origin` still points to `openclaw/openclaw.git` (org — read-only for karaabd23-crypto).
+    - Pull/push from Hetzner will fail or pull wrong commits.
+    - To fix: `ssh root@195.201.123.118 'cd /root/openclaw && git remote set-url origin https://github.com/karaabd23-crypto/openclaw.git'`
 
 14. Brave search plugin not configured (AUDIT 2026-04-23):
     - The `brave` extension is present but has empty config `{}` in openclaw.json.
     - Not functional until a Brave Search API key is added.
     - Exa search plugin: same status — not confirmed configured.
 
+15. Session lock / wrapper-path instability (AUDIT 2026-04-23):
+
+- Some repeated CLI smoke runs against `agent:main:main` hit `session file locked (timeout 10000ms)` on `/root/.openclaw/agents/main/sessions/f01cc590-1dd1-45fd-b0a0-f525bd2bb977.jsonl.lock`.
+- This is separate from model routing; persisted successful turns still land on Ollama.
+- Use fresh `--session-id` values for narrow smoke tests until the lock behavior is debugged.
+
+16. Telegram secret-resolution bug in some embedded wrapper flows (AUDIT 2026-04-23):
+
+- Some embedded CLI runs report unresolved `file:openclawassistant:/telegram/botToken` during message-action discovery.
+- Gateway startup itself still succeeds and Telegram provider starts.
+- Treat this as a wrapper/runtime snapshot bug, not evidence that the live Telegram channel is down.
+
 ## Immediate Next-Step Checklist
 
-1. Lock IELTS + CELPIP offer stacks v1 in context docs:
-   - one core offer per track
-   - one upsell per track
-   - one CTA path to booking/payment per track
+1. Lock IELTS offer stack v1 in context docs:
+   - one core offer
+   - one upsell
+   - one CTA path to booking/payment
 2. Keep runtime preflight discipline:
    - local gateway masked/inactive
    - tunnel active
    - local tunnel health live
 3. Keep cost policy live:
    - local-first default
-   - bring Copilot online before reintroducing cloud fallbacks
-   - OpenAI only via explicit escalation/fallback
-   - check spend cap in OpenAI dashboard
+
+- avoid re-enabling task-router or persisted session overrides without explicit reason
+- check spend cap in OpenAI dashboard
+
 4. Weekly verification:
    - `openclaw models status`
    - telegram session pin check
    - `/healthz` + container health + channel startup logs
-5. Publish one IELTS unit and one CELPIP unit per cycle:
-   - long-form or core content unit per track
-   - derivatives per track
-   - single CTA into each offer flow
+5. Publish one IELTS content unit per cycle:
+   - long-form
+   - 3 short derivatives
+   - single CTA into offer flow
 
 ## Cost and Model Intent (User Requirement)
 
 - User priority: strong intelligence + proactivity, with strict spend control.
 - Budget posture target: about `$25/month` (provider-side hard cap).
 - Runtime default now routes local-first:
-  - primary `ollama/llama3.2:1b`
-  - fallbacks currently `[]`
+  - primary `ollama/qwen2.5:7b`
+  - fallbacks `ollama/llama3.2:3b`, `openai/gpt-5.4-mini`, `openai/gpt-5.4`
 - Sub-agent escalation route:
-  - currently local-only (`ollama/llama3.2:1b`)
-  - add Copilot/OpenAI fallbacks only after validating reliability and cost policy
+  - primary `openai/gpt-5.4-mini`, fallback `openai/gpt-5.4`
 - Telegram direct and slash sessions are pinned back to local model path after cleanup.
 - Future agents should preserve this spend-control posture unless user explicitly changes policy.
 
-## IELTS + CELPIP Handoff (Business Continuity)
+## IELTS Corner Handoff (Business Continuity)
 
-- Business focus:
-  - Equal split between IELTS Corner and CELPIP Corner.
-  - CELPIP has higher near-term monetization potential at the moment.
+- Primary business focus:
+  - IELTS Corner first.
+  - CELPIP Corner secondary until IELTS offer/funnel cadence is stable.
 - Mandatory continuity behaviors:
   - Start work by anchoring to `openclaw-context/core/01_projects.md`, `openclaw-context/core/02_businesses_and_offers.md`, and `openclaw-context/active/08_now.md`.
   - Preserve runtime integrity and cost policy while executing business/content tasks.
-  - Do not replace shipping tasks with broad planning-only loops.
+  - Do not replace IELTS shipping tasks with broad planning-only loops.
 - Expected weekly outputs:
-  - shipped content artifact(s) with CTA for both tracks
-  - one offer/funnel improvement in each track
+  - one shipped IELTS content artifact with CTA
+  - one offer/funnel improvement
   - one brief handoff/context refresh
 - Quality gate:
   - if business claims are uncertain, mark `Needs verification` and create a concrete verification action.

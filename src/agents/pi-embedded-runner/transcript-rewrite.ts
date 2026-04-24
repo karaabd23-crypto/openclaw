@@ -20,7 +20,7 @@ function estimateMessageBytes(message: AgentMessage): number {
 
 function remapEntryId(
   entryId: string | null | undefined,
-  rewrittenEntryIds: ReadonlyMap<string, string>,
+  rewrittenEntryIds: ReadonlyMap<string, string | null>,
 ): string | null {
   if (!entryId) {
     return null;
@@ -31,7 +31,7 @@ function remapEntryId(
 function appendBranchEntry(params: {
   sessionManager: SessionManagerLike;
   entry: SessionBranchEntry;
-  rewrittenEntryIds: ReadonlyMap<string, string>;
+  rewrittenEntryIds: ReadonlyMap<string, string | null>;
   appendMessage: SessionManagerLike["appendMessage"];
 }): string {
   const { sessionManager, entry, rewrittenEntryIds, appendMessage } = params;
@@ -85,17 +85,17 @@ function appendBranchEntry(params: {
 }
 
 /**
- * Safely rewrites transcript message entries on the active branch by branching
- * from the first rewritten message's parent and re-appending the suffix.
+ * Safely rewrites or deletes transcript message entries on the active branch by
+ * branching from the first changed message's parent and re-appending the suffix.
  */
 export function rewriteTranscriptEntriesInSessionManager(params: {
   sessionManager: SessionManagerLike;
   replacements: TranscriptRewriteReplacement[];
 }): TranscriptRewriteResult {
-  const replacementsById = new Map(
+  const replacementsById = new Map<string, AgentMessage | null>(
     params.replacements
       .filter((replacement) => replacement.entryId.trim().length > 0)
-      .map((replacement) => [replacement.entryId, replacement.message]),
+      .map((replacement) => [replacement.entryId, replacement.message ?? null]),
   );
   if (replacementsById.size === 0) {
     return {
@@ -124,12 +124,12 @@ export function rewriteTranscriptEntriesInSessionManager(params: {
     if (entry.type !== "message") {
       continue;
     }
-    const replacement = replacementsById.get(entry.id);
-    if (!replacement) {
+    if (!replacementsById.has(entry.id)) {
       continue;
     }
+    const replacement = replacementsById.get(entry.id) ?? null;
     const originalBytes = estimateMessageBytes(entry.message);
-    const replacementBytes = estimateMessageBytes(replacement);
+    const replacementBytes = replacement ? estimateMessageBytes(replacement) : 0;
     matchedIndices.push(index);
     bytesFreed += Math.max(0, originalBytes - replacementBytes);
   }
@@ -165,19 +165,28 @@ export function rewriteTranscriptEntriesInSessionManager(params: {
   // Maintenance rewrites should preserve the exact requested history without
   // re-running persistence hooks or size truncation on replayed messages.
   const appendMessage = getRawSessionAppendMessage(params.sessionManager);
-  const rewrittenEntryIds = new Map<string, string>();
+  const rewrittenEntryIds = new Map<string, string | null>();
   for (let index = matchedIndices[0]; index < branch.length; index++) {
     const entry = branch[index];
-    const replacement = entry.type === "message" ? replacementsById.get(entry.id) : undefined;
-    const newEntryId =
-      replacement === undefined
-        ? appendBranchEntry({
-            sessionManager: params.sessionManager,
-            entry,
-            rewrittenEntryIds,
-            appendMessage,
-          })
-        : appendMessage(replacement as Parameters<typeof params.sessionManager.appendMessage>[0]);
+    const hasReplacement = entry.type === "message" && replacementsById.has(entry.id);
+    let newEntryId: string | null;
+    if (!hasReplacement) {
+      newEntryId = appendBranchEntry({
+        sessionManager: params.sessionManager,
+        entry,
+        rewrittenEntryIds,
+        appendMessage,
+      });
+    } else {
+      const replacement = replacementsById.get(entry.id) ?? null;
+      if (replacement === null) {
+        newEntryId = remapEntryId(entry.parentId, rewrittenEntryIds);
+      } else {
+        newEntryId = appendMessage(
+          replacement as Parameters<typeof params.sessionManager.appendMessage>[0],
+        );
+      }
+    }
     rewrittenEntryIds.set(entry.id, newEntryId);
   }
 

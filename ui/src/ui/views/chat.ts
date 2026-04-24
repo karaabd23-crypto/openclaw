@@ -8,7 +8,6 @@ import {
 } from "../chat/attachment-support.ts";
 import { buildChatItems } from "../chat/build-chat-items.ts";
 import { renderContextNotice } from "../chat/context-notice.ts";
-import { DeletedMessages } from "../chat/deleted-messages.ts";
 import { exportChatMarkdown } from "../chat/export.ts";
 import {
   renderMessageGroup,
@@ -87,6 +86,7 @@ export type ChatProps = {
   showNewMessages?: boolean;
   onScrollToBottom?: () => void;
   onRefresh: () => void;
+  onDeleteMessages?: (entryIds: string[]) => void | Promise<boolean>;
   onToggleFocusMode: () => void;
   getDraft?: () => string;
   onDraftChange: (next: string) => void;
@@ -115,7 +115,6 @@ export type ChatProps = {
 // Persistent instances keyed by session
 const inputHistories = new Map<string, InputHistory>();
 const pinnedMessagesMap = new Map<string, PinnedMessages>();
-const deletedMessagesMap = new Map<string, DeletedMessages>();
 
 function getInputHistory(sessionKey: string): InputHistory {
   return getOrCreateSessionCacheValue(inputHistories, sessionKey, () => new InputHistory());
@@ -126,14 +125,6 @@ function getPinnedMessages(sessionKey: string): PinnedMessages {
     pinnedMessagesMap,
     sessionKey,
     () => new PinnedMessages(sessionKey),
-  );
-}
-
-function getDeletedMessages(sessionKey: string): DeletedMessages {
-  return getOrCreateSessionCacheValue(
-    deletedMessagesMap,
-    sessionKey,
-    () => new DeletedMessages(sessionKey),
   );
 }
 
@@ -456,6 +447,32 @@ function exportMarkdown(props: ChatProps): void {
   exportChatMarkdown(props.messages, props.assistantName);
 }
 
+function resolveTranscriptEntryId(message: unknown): string | null {
+  if (!message || typeof message !== "object") {
+    return null;
+  }
+  const record = message as Record<string, unknown>;
+  if (typeof record.id === "string" && record.id.trim()) {
+    return record.id;
+  }
+  const marker = record.__openclaw;
+  if (!marker || typeof marker !== "object" || Array.isArray(marker)) {
+    return null;
+  }
+  const entryId = (marker as Record<string, unknown>).id;
+  return typeof entryId === "string" && entryId.trim() ? entryId : null;
+}
+
+function collectTranscriptEntryIds(messages: Array<{ message: unknown }>): string[] {
+  return Array.from(
+    new Set(
+      messages
+        .map((item) => resolveTranscriptEntryId(item.message))
+        .filter((entryId): entryId is string => Boolean(entryId)),
+    ),
+  );
+}
+
 const WELCOME_SUGGESTIONS = [
   "What can you do?",
   "Summarize my recent sessions",
@@ -749,7 +766,6 @@ export function renderChat(props: ChatProps) {
       }) ?? null,
   };
   const pinned = getPinnedMessages(props.sessionKey);
-  const deleted = getDeletedMessages(props.sessionKey);
   const inputHistory = getInputHistory(props.sessionKey);
   const hasAttachments = (props.attachments?.length ?? 0) > 0;
   const tokens = tokenEstimate(props.draft);
@@ -878,9 +894,7 @@ export function renderChat(props: ChatProps) {
               );
             }
             if (item.kind === "group") {
-              if (deleted.has(item.key)) {
-                return nothing;
-              }
+              const entryIds = collectTranscriptEntryIds(item.messages);
               return renderMessageGroup(item, {
                 onOpenSidebar: props.onOpenSidebar,
                 showReasoning,
@@ -905,10 +919,13 @@ export function renderChat(props: ChatProps) {
                 allowExternalEmbedUrls: props.allowExternalEmbedUrls ?? false,
                 contextWindow:
                   activeSession?.contextTokens ?? props.sessions?.defaults?.contextTokens ?? null,
-                onDelete: () => {
-                  deleted.delete(item.key);
-                  requestUpdate();
-                },
+                deleteCount: entryIds.length,
+                onDelete:
+                  entryIds.length > 0
+                    ? () => {
+                        void props.onDeleteMessages?.(entryIds);
+                      }
+                    : undefined,
               });
             }
             return nothing;

@@ -35,7 +35,7 @@ import {
   saveAgentsConfig,
 } from "./controllers/agents.ts";
 import { loadChannels } from "./controllers/channels.ts";
-import { loadChatHistory } from "./controllers/chat.ts";
+import { deleteChatMessages, loadChatHistory } from "./controllers/chat.ts";
 import {
   applyConfig,
   ensureAgentConfigEntry,
@@ -2249,6 +2249,11 @@ export function renderApp(state: AppViewState) {
               onSend: () => state.handleSendChat(),
               canAbort: Boolean(state.chatRunId),
               onAbort: () => void state.handleAbortChat(),
+              onDeleteMessages: async (entryIds) => {
+                const deleted = await deleteChatMessages(state, entryIds);
+                requestHostUpdate?.();
+                return deleted;
+              },
               onQueueRemove: (id) => state.removeQueuedMessage(id),
               onDismissSideResult: () => {
                 state.chatSideResult = null;

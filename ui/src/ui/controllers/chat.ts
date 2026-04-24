@@ -402,6 +402,29 @@ export async function abortChatRun(state: ChatState): Promise<boolean> {
   }
 }
 
+export async function deleteChatMessages(state: ChatState, entryIds: string[]): Promise<boolean> {
+  if (!state.client || !state.connected) {
+    return false;
+  }
+  const uniqueEntryIds = Array.from(
+    new Set(entryIds.map((entryId) => entryId.trim()).filter((entryId) => entryId.length > 0)),
+  );
+  if (uniqueEntryIds.length === 0) {
+    return false;
+  }
+  try {
+    await state.client.request("chat.delete", {
+      sessionKey: state.sessionKey,
+      entryIds: uniqueEntryIds,
+    });
+    await loadChatHistory(state);
+    return true;
+  } catch (err) {
+    state.lastError = formatConnectError(err);
+    return false;
+  }
+}
+
 export function handleChatEvent(state: ChatState, payload?: ChatEventPayload) {
   if (!payload) {
     return null;

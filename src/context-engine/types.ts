@@ -69,12 +69,12 @@ export type SubagentEndReason = "deleted" | "completed" | "swept" | "released";
 export type TranscriptRewriteReplacement = {
   /** Existing transcript entry id to replace on the active branch. */
   entryId: string;
-  /** Replacement message content for that entry. */
-  message: AgentMessage;
+  /** Replacement message content for that entry; null deletes the entry. */
+  message: AgentMessage | null;
 };
 
 export type TranscriptRewriteRequest = {
-  /** Message entry replacements to apply in one branch-and-reappend pass. */
+  /** Message entry replacements or deletions to apply in one branch-and-reappend pass. */
   replacements: TranscriptRewriteReplacement[];
 };
 

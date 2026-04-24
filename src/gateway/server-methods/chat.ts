@@ -64,6 +64,7 @@ import {
   errorShape,
   formatValidationErrors,
   validateChatAbortParams,
+  validateChatDeleteParams,
   validateChatHistoryParams,
   validateChatInjectParams,
   validateChatSendParams,
@@ -1757,6 +1758,65 @@ export const chatHandlers: GatewayRequestHandlers = {
       ok: true,
       aborted: res.aborted,
       runIds: res.aborted ? [runId] : [],
+    });
+  },
+  "chat.delete": async ({ params, respond }) => {
+    if (!validateChatDeleteParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid chat.delete params: ${formatValidationErrors(validateChatDeleteParams.errors)}`,
+        ),
+      );
+      return;
+    }
+
+    const { sessionKey: rawSessionKey, entryIds } = params as {
+      sessionKey: string;
+      entryIds: string[];
+    };
+    const uniqueEntryIds = Array.from(
+      new Set(entryIds.map((entryId) => entryId.trim()).filter((entryId) => entryId.length > 0)),
+    );
+    if (uniqueEntryIds.length === 0) {
+      respond(true, { ok: true, deleted: false, deletedEntryIds: [], deletedCount: 0 });
+      return;
+    }
+
+    const { storePath, entry, canonicalKey: sessionKey } = loadSessionEntry(rawSessionKey);
+    const sessionId = entry?.sessionId;
+    const transcriptPath =
+      sessionId && (storePath || entry?.sessionFile)
+        ? resolveTranscriptPath({
+            sessionId,
+            storePath,
+            sessionFile: entry?.sessionFile,
+          })
+        : null;
+    if (!sessionId || !transcriptPath) {
+      respond(true, { ok: true, deleted: false, deletedEntryIds: [], deletedCount: 0 });
+      return;
+    }
+
+    const result = await rewriteTranscriptEntriesInSessionFile({
+      sessionFile: transcriptPath,
+      sessionId,
+      sessionKey,
+      request: {
+        replacements: uniqueEntryIds.map((entryId) => ({
+          entryId,
+          message: null,
+        })),
+      },
+    });
+
+    respond(true, {
+      ok: true,
+      deleted: result.changed,
+      deletedEntryIds: result.changed ? uniqueEntryIds : [],
+      deletedCount: result.rewrittenEntries,
     });
   },
   "chat.send": async ({ params, respond, context, client }) => {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { GatewayRequestError } from "../gateway.ts";
 import {
   abortChatRun,
+  deleteChatMessages,
   handleChatEvent,
   loadChatHistory,
   sendChatMessage,
@@ -677,6 +678,38 @@ describe("abortChatRun", () => {
       runId: "run-1",
     });
     expect(state.lastError).toContain("device identity required");
+  });
+});
+
+describe("deleteChatMessages", () => {
+  it("deletes persisted transcript entries and refreshes chat history", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, deleted: true })
+      .mockResolvedValueOnce({
+        messages: [{ role: "assistant", content: [{ type: "text", text: "remaining" }] }],
+        thinkingLevel: "low",
+      });
+    const state = createState({
+      connected: true,
+      client: { request } as unknown as ChatState["client"],
+    });
+
+    const result = await deleteChatMessages(state, ["entry-1", "entry-2", "entry-1"]);
+
+    expect(result).toBe(true);
+    expect(request).toHaveBeenNthCalledWith(1, "chat.delete", {
+      sessionKey: "main",
+      entryIds: ["entry-1", "entry-2"],
+    });
+    expect(request).toHaveBeenNthCalledWith(2, "chat.history", {
+      sessionKey: "main",
+      limit: 200,
+    });
+    expect(state.chatMessages).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "remaining" }] },
+    ]);
+    expect(state.chatThinkingLevel).toBe("low");
   });
 });
 

@@ -268,6 +268,37 @@ describe("rewriteTranscriptEntriesInSessionManager", () => {
       content: [{ type: "text", text: "summarized" }],
     });
   });
+
+  it("can delete message entries and preserve the remaining suffix", () => {
+    const { sessionManager, toolResultEntryId } = createReadRewriteSession();
+
+    const result = rewriteTranscriptEntriesInSessionManager({
+      sessionManager,
+      replacements: [
+        {
+          entryId: toolResultEntryId,
+          message: null,
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      changed: true,
+      rewrittenEntries: 1,
+    });
+    expect(result.bytesFreed).toBeGreaterThan(0);
+
+    const branchMessages = getBranchMessages(sessionManager);
+    expect(branchMessages.map((message) => message.role)).toEqual([
+      "user",
+      "assistant",
+      "assistant",
+    ]);
+    expect(branchMessages[2]).toMatchObject({
+      role: "assistant",
+      content: [{ type: "text", text: "summarized" }],
+    });
+  });
 });
 
 describe("rewriteTranscriptEntriesInSessionFile", () => {

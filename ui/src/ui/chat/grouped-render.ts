@@ -257,6 +257,7 @@ export function renderMessageGroup(
     allowExternalEmbedUrls?: boolean;
     contextWindow?: number | null;
     onDelete?: () => void;
+    deleteCount?: number;
   },
 ) {
   const normalizedRole = normalizeRoleForGrouping(group.role);
@@ -326,7 +327,11 @@ export function renderMessageGroup(
           ${renderMessageMeta(meta)}
           ${normalizedRole === "assistant" && isTtsSupported() ? renderTtsButton(group) : nothing}
           ${opts.onDelete
-            ? renderDeleteButton(opts.onDelete, normalizedRole === "user" ? "left" : "right")
+            ? renderDeleteButton(
+                opts.onDelete,
+                normalizedRole === "user" ? "left" : "right",
+                opts.deleteCount,
+              )
             : nothing}
         </div>
       </div>
@@ -475,13 +480,14 @@ function shouldSkipDeleteConfirm(): boolean {
   }
 }
 
-function renderDeleteButton(onDelete: () => void, side: DeleteConfirmSide) {
+function renderDeleteButton(onDelete: () => void, side: DeleteConfirmSide, deleteCount = 1) {
+  const isPlural = deleteCount > 1;
   return html`
     <span class="chat-delete-wrap">
       <button
         class="chat-group-delete"
         title="Delete"
-        aria-label="Delete message"
+        aria-label=${isPlural ? "Delete messages" : "Delete message"}
         @click=${(e: Event) => {
           if (shouldSkipDeleteConfirm()) {
             onDelete();
@@ -497,7 +503,7 @@ function renderDeleteButton(onDelete: () => void, side: DeleteConfirmSide) {
           const popover = document.createElement("div");
           popover.className = `chat-delete-confirm chat-delete-confirm--${side}`;
           popover.innerHTML = `
-            <p class="chat-delete-confirm__text">Delete this message?</p>
+            <p class="chat-delete-confirm__text">${isPlural ? "Delete these messages?" : "Delete this message?"}</p>
             <label class="chat-delete-confirm__remember">
               <input type="checkbox" class="chat-delete-confirm__check" />
               <span>Don't ask again</span>

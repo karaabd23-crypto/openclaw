@@ -59,6 +59,14 @@ export const ChatAbortParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const ChatDeleteParamsSchema = Type.Object(
+  {
+    sessionKey: NonEmptyString,
+    entryIds: Type.Array(NonEmptyString, { minItems: 1, maxItems: 200 }),
+  },
+  { additionalProperties: false },
+);
+
 export const ChatInjectParamsSchema = Type.Object(
   {
     sessionKey: NonEmptyString,

@@ -109,7 +109,7 @@ export function appendInjectedAssistantMessageToTranscript(params: {
       message: messageBody,
       messageId,
     });
-    return { ok: true, messageId, message: messageBody };
+    return { ok: true, messageId, message: { ...messageBody, id: messageId } };
   } catch (err) {
     return { ok: false, error: formatErrorMessage(err) };
   }

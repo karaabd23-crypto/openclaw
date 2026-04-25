@@ -421,7 +421,10 @@ export type AppViewState = {
     handleRunUpdate: () => Promise<void>;
     setPassword: (next: string) => void;
     setChatMessage: (next: string) => void;
-    handleSendChat: (messageOverride?: string, opts?: { restoreDraft?: boolean }) => Promise<void>;
+    handleSendChat: (
+      messageOverride?: string,
+      opts?: { restoreDraft?: boolean; busyModeWhenBusy?: "queue" | "steer" },
+    ) => Promise<void>;
     handleAbortChat: () => Promise<void>;
     removeQueuedMessage: (id: string) => void;
     handleChatScroll: (event: Event) => void;

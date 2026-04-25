@@ -332,6 +332,98 @@ describe("handleSendChat", () => {
     expect(host.lastError).toContain("network down");
   });
 
+  it("steers plain text while a run is active when steer mode is selected", async () => {
+    const request = vi.fn(async (method: string) => {
+      if (method === "chat.send") {
+        return { status: "started", runId: "run-1", messageSeq: 2 };
+      }
+      throw new Error(`Unexpected request: ${method}`);
+    });
+    const host = makeHost({
+      client: { request } as unknown as ChatHost["client"],
+      chatRunId: "run-1",
+      chatMessage: "tighten the plan",
+      sessionKey: "agent:main:main",
+      sessionsResult: createSessionsResult([row("agent:main:main", { status: "running" })]),
+    });
+
+    await handleSendChat(host, undefined, { busyModeWhenBusy: "steer" });
+
+    expect(request).toHaveBeenCalledWith(
+      "chat.send",
+      expect.objectContaining({
+        sessionKey: "agent:main:main",
+        message: "tighten the plan",
+        deliver: false,
+      }),
+    );
+    expect(host.chatQueue).toEqual([
+      expect.objectContaining({
+        text: "/steer tighten the plan",
+        pendingRunId: "run-1",
+      }),
+    ]);
+    expect(host.chatMessage).toBe("");
+  });
+
+  it("queues plain text while a run is active when queue mode is selected", async () => {
+    const request = vi.fn(async () => {
+      throw new Error("Should not call chat.send directly in queue mode");
+    });
+    const host = makeHost({
+      client: { request } as unknown as ChatHost["client"],
+      chatRunId: "run-1",
+      chatMessage: "tighten the plan",
+      sessionKey: "agent:main:main",
+      sessionsResult: createSessionsResult([row("agent:main:main", { status: "running" })]),
+    });
+
+    await handleSendChat(host, undefined, { busyModeWhenBusy: "queue" });
+
+    expect(request).not.toHaveBeenCalled();
+    expect(host.chatQueue).toEqual([
+      expect.objectContaining({
+        text: "tighten the plan",
+      }),
+    ]);
+  });
+
+  it("queues attachments while a run is active", async () => {
+    const request = vi.fn(async () => {
+      throw new Error("Should not send while active when attachments are present");
+    });
+    const host = makeHost({
+      client: { request } as unknown as ChatHost["client"],
+      chatRunId: "run-1",
+      chatMessage: "",
+      chatAttachments: [
+        {
+          id: "att-1",
+          dataUrl: "data:application/pdf;base64,JVBERg==",
+          mimeType: "application/pdf",
+          fileName: "brief.pdf",
+        },
+      ],
+      sessionKey: "agent:main:main",
+      sessionsResult: createSessionsResult([row("agent:main:main", { status: "running" })]),
+    });
+
+    await handleSendChat(host);
+
+    expect(request).not.toHaveBeenCalled();
+    expect(host.chatQueue).toEqual([
+      expect.objectContaining({
+        text: "",
+        attachments: [
+          expect.objectContaining({
+            fileName: "brief.pdf",
+            mimeType: "application/pdf",
+          }),
+        ],
+      }),
+    ]);
+  });
+
   it("clears BTW side results when /clear resets chat history", async () => {
     const request = vi.fn(async (method: string) => {
       if (method === "sessions.reset") {

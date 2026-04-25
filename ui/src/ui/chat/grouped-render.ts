@@ -258,6 +258,8 @@ export function renderMessageGroup(
     contextWindow?: number | null;
     onDelete?: () => void;
     deleteCount?: number;
+    onReply?: () => void;
+    onEdit?: () => void;
   },
 ) {
   const normalizedRole = normalizeRoleForGrouping(group.role);
@@ -324,7 +326,8 @@ export function renderMessageGroup(
         <div class="chat-group-footer">
           <span class="chat-sender-name">${who}</span>
           <span class="chat-group-timestamp">${timestamp}</span>
-          ${renderMessageMeta(meta)}
+          ${renderMessageMeta(meta)} ${opts.onReply ? renderReplyButton(opts.onReply) : nothing}
+          ${opts.onEdit ? renderEditButton(opts.onEdit) : nothing}
           ${normalizedRole === "assistant" && isTtsSupported() ? renderTtsButton(group) : nothing}
           ${opts.onDelete
             ? renderDeleteButton(
@@ -543,6 +546,34 @@ function renderDeleteButton(onDelete: () => void, side: DeleteConfirmSide, delet
         ${icons.trash ?? icons.x}
       </button>
     </span>
+  `;
+}
+
+function renderReplyButton(onReply: () => void) {
+  return html`
+    <button
+      class="btn btn--xs chat-group-reply"
+      type="button"
+      title="Reply with quote"
+      aria-label="Reply with quote"
+      @click=${onReply}
+    >
+      ${icons.messageSquare}
+    </button>
+  `;
+}
+
+function renderEditButton(onEdit: () => void) {
+  return html`
+    <button
+      class="btn btn--xs chat-group-edit"
+      type="button"
+      title="Edit and resend"
+      aria-label="Edit and resend"
+      @click=${onEdit}
+    >
+      ${icons.edit}
+    </button>
   `;
 }
 

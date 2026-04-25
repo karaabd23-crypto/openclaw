@@ -15,6 +15,7 @@ import {
   renderStreamingGroup,
 } from "../chat/grouped-render.ts";
 import { InputHistory } from "../chat/input-history.ts";
+import { extractText } from "../chat/message-extract.ts";
 import { PinnedMessages } from "../chat/pinned-messages.ts";
 import { getPinnedMessageSummary } from "../chat/pinned-summary.ts";
 import { renderChatRunControls } from "../chat/run-controls.ts";
@@ -91,7 +92,7 @@ export type ChatProps = {
   getDraft?: () => string;
   onDraftChange: (next: string) => void;
   onRequestUpdate?: () => void;
-  onSend: () => void;
+  onSend: (busyModeWhenBusy?: "queue" | "steer") => void;
   onAbort?: () => void;
   onQueueRemove: (id: string) => void;
   onDismissSideResult?: () => void;
@@ -141,6 +142,9 @@ interface ChatEphemeralState {
   searchOpen: boolean;
   searchQuery: string;
   pinnedExpanded: boolean;
+  busySendModeWhenBusy: "queue" | "steer";
+  composerReply: { entryId: string | null; quote: string } | null;
+  composerEdit: { entryId: string | null; preview: string } | null;
 }
 
 function createChatEphemeralState(): ChatEphemeralState {
@@ -157,6 +161,9 @@ function createChatEphemeralState(): ChatEphemeralState {
     searchOpen: false,
     searchQuery: "",
     pinnedExpanded: false,
+    busySendModeWhenBusy: "queue",
+    composerReply: null,
+    composerEdit: null,
   };
 }
 
@@ -189,18 +196,18 @@ function handlePaste(e: ClipboardEvent, props: ChatProps) {
   if (!items || !props.onAttachmentsChange) {
     return;
   }
-  const imageItems: DataTransferItem[] = [];
+  const fileItems: DataTransferItem[] = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if (item.type.startsWith("image/")) {
-      imageItems.push(item);
+    if (item.kind === "file") {
+      fileItems.push(item);
     }
   }
-  if (imageItems.length === 0) {
+  if (fileItems.length === 0) {
     return;
   }
   e.preventDefault();
-  for (const item of imageItems) {
+  for (const item of fileItems) {
     const file = item.getAsFile();
     if (!file) {
       continue;
@@ -212,6 +219,7 @@ function handlePaste(e: ClipboardEvent, props: ChatProps) {
         id: generateAttachmentId(),
         dataUrl,
         mimeType: file.type,
+        fileName: file.name || "attachment",
       };
       const current = props.attachments ?? [];
       props.onAttachmentsChange?.([...current, newAttachment]);
@@ -239,6 +247,7 @@ function handleFileSelect(e: Event, props: ChatProps) {
         id: generateAttachmentId(),
         dataUrl: reader.result as string,
         mimeType: file.type,
+        fileName: file.name || "attachment",
       });
       pending--;
       if (pending === 0) {
@@ -270,6 +279,7 @@ function handleDrop(e: DragEvent, props: ChatProps) {
         id: generateAttachmentId(),
         dataUrl: reader.result as string,
         mimeType: file.type,
+        fileName: file.name || "attachment",
       });
       pending--;
       if (pending === 0) {
@@ -290,7 +300,9 @@ function renderAttachmentPreview(props: ChatProps): TemplateResult | typeof noth
       ${attachments.map(
         (att) => html`
           <div class="chat-attachment-thumb">
-            <img src=${att.dataUrl} alt="Attachment preview" />
+            ${att.mimeType.startsWith("image/")
+              ? html`<img src=${att.dataUrl} alt="Attachment preview" />`
+              : html`<div class="chat-attachment-file" title=${att.fileName}>${att.fileName}</div>`}
             <button
               class="chat-attachment-remove"
               type="button"
@@ -305,6 +317,173 @@ function renderAttachmentPreview(props: ChatProps): TemplateResult | typeof noth
           </div>
         `,
       )}
+    </div>
+  `;
+}
+
+function formatQueuedAttachmentText(attachments?: ChatAttachment[]): string {
+  if (!attachments || attachments.length === 0) {
+    return "";
+  }
+  if (attachments.length === 1) {
+    return attachments[0]?.fileName?.trim() || "Attachment";
+  }
+  const first = attachments[0]?.fileName?.trim() || "Attachment";
+  const extra = attachments.length - 1;
+  return `${first} +${extra} more file${extra === 1 ? "" : "s"}`;
+}
+
+function trimQuoteForComposer(text: string, maxChars = 200): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "Message";
+  }
+  return normalized.length > maxChars
+    ? `${normalized.slice(0, maxChars).trimEnd()}...`
+    : normalized;
+}
+
+function parseDataUrlMimeType(dataUrl: string): string | null {
+  const match = /^data:([^;,]+)[;,]/i.exec(dataUrl);
+  return match?.[1]?.trim() || null;
+}
+
+function defaultAttachmentFileName(mimeType: string, index: number): string {
+  const normalized = mimeType.trim().toLowerCase();
+  const extByMime: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "audio/mpeg": "mp3",
+    "audio/wav": "wav",
+    "audio/ogg": "ogg",
+    "video/mp4": "mp4",
+    "application/pdf": "pdf",
+    "text/plain": "txt",
+  };
+  const ext = extByMime[normalized];
+  return ext ? `attachment-${index}.${ext}` : `attachment-${index}`;
+}
+
+function extractEditableAttachmentsFromMessage(message: unknown): ChatAttachment[] {
+  if (!message || typeof message !== "object") {
+    return [];
+  }
+  const record = message as Record<string, unknown>;
+  if (!Array.isArray(record.content)) {
+    return [];
+  }
+
+  const attachments: ChatAttachment[] = [];
+  const seenDataUrls = new Set<string>();
+
+  const addAttachment = (params: { dataUrl: string; mimeType: string; fileName: string }) => {
+    const normalizedDataUrl = params.dataUrl.trim();
+    if (!normalizedDataUrl || seenDataUrls.has(normalizedDataUrl)) {
+      return;
+    }
+    seenDataUrls.add(normalizedDataUrl);
+    attachments.push({
+      id: generateAttachmentId(),
+      dataUrl: normalizedDataUrl,
+      mimeType: params.mimeType,
+      fileName: params.fileName,
+    });
+  };
+
+  for (const [index, item] of record.content.entries()) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const block = item as Record<string, unknown>;
+    if (block.type === "image" && block.source && typeof block.source === "object") {
+      const source = block.source as Record<string, unknown>;
+      if (source.type !== "base64" || typeof source.data !== "string") {
+        continue;
+      }
+      const mimeType =
+        typeof source.media_type === "string" && source.media_type.trim()
+          ? source.media_type
+          : "image/png";
+      const dataUrl = source.data.startsWith("data:")
+        ? source.data
+        : `data:${mimeType};base64,${source.data}`;
+      addAttachment({
+        dataUrl,
+        mimeType,
+        fileName: defaultAttachmentFileName(mimeType, index + 1),
+      });
+      continue;
+    }
+    if (block.type === "attachment" && block.attachment && typeof block.attachment === "object") {
+      const attachment = block.attachment as Record<string, unknown>;
+      if (typeof attachment.url !== "string" || !attachment.url.startsWith("data:")) {
+        continue;
+      }
+      const mimeType =
+        typeof attachment.mimeType === "string" && attachment.mimeType.trim()
+          ? attachment.mimeType
+          : (parseDataUrlMimeType(attachment.url) ?? "application/octet-stream");
+      const fileName =
+        typeof attachment.label === "string" && attachment.label.trim()
+          ? attachment.label
+          : defaultAttachmentFileName(mimeType, index + 1);
+      addAttachment({
+        dataUrl: attachment.url,
+        mimeType,
+        fileName,
+      });
+    }
+  }
+
+  return attachments;
+}
+
+function buildReplyPrefixedDraft(params: {
+  draft: string;
+  entryId: string | null;
+  quote: string;
+}): string {
+  const replyTag = params.entryId ? `[[reply_to:${params.entryId}]]` : "[[reply_to_current]]";
+  const quoteLine = `> ${trimQuoteForComposer(params.quote)}`;
+  const body = params.draft.trim();
+  return body ? `${replyTag}\n${quoteLine}\n\n${body}` : `${replyTag}\n${quoteLine}`;
+}
+
+function renderComposerIntentBanner(requestUpdate: () => void): TemplateResult | typeof nothing {
+  const reply = vs.composerReply;
+  const edit = vs.composerEdit;
+  if (!reply && !edit) {
+    return nothing;
+  }
+  return html`
+    <div class="chat-compose-intent">
+      ${reply
+        ? html`
+            <span class="chat-compose-intent__pill chat-compose-intent__pill--reply">
+              ${icons.messageSquare} Replying: "${trimQuoteForComposer(reply.quote, 120)}"
+            </span>
+          `
+        : nothing}
+      ${edit
+        ? html`
+            <span class="chat-compose-intent__pill chat-compose-intent__pill--edit">
+              ${icons.edit} Editing: "${trimQuoteForComposer(edit.preview, 120)}"
+            </span>
+          `
+        : nothing}
+      <button
+        class="btn btn--ghost chat-compose-intent__clear"
+        type="button"
+        @click=${() => {
+          vs.composerReply = null;
+          vs.composerEdit = null;
+          requestUpdate();
+        }}
+      >
+        Clear
+      </button>
     </div>
   `;
 }
@@ -772,12 +951,55 @@ export function renderChat(props: ChatProps) {
 
   const placeholder = props.connected
     ? hasAttachments
-      ? "Add a message or paste more images..."
+      ? "Add a message or paste more files..."
       : `Message ${props.assistantName || "agent"} (Enter to send)`
     : "Connect to the gateway to start chatting...";
 
   const requestUpdate = props.onRequestUpdate ?? (() => {});
   const getDraft = props.getDraft ?? (() => props.draft);
+
+  const sendFromComposer = async () => {
+    if (!props.connected) {
+      return;
+    }
+
+    const currentDraft = getDraft();
+    const draftStartsWithSlash = currentDraft.trim().startsWith("/");
+    const shouldInjectReply = Boolean(vs.composerReply && !draftStartsWithSlash);
+    const outgoingMessage =
+      shouldInjectReply && vs.composerReply
+        ? buildReplyPrefixedDraft({
+            draft: currentDraft,
+            entryId: vs.composerReply.entryId,
+            quote: vs.composerReply.quote,
+          })
+        : currentDraft;
+    const hasOutgoingText = outgoingMessage.trim().length > 0;
+    const hasComposerAttachments = (props.attachments?.length ?? 0) > 0;
+    if (!hasOutgoingText && !hasComposerAttachments) {
+      return;
+    }
+
+    if (vs.composerEdit?.entryId && props.onDeleteMessages) {
+      const deleted = await props.onDeleteMessages([vs.composerEdit.entryId]);
+      if (!deleted) {
+        return;
+      }
+    }
+
+    if (shouldInjectReply && outgoingMessage !== currentDraft) {
+      props.onDraftChange(outgoingMessage);
+    }
+
+    if (currentDraft.trim()) {
+      inputHistory.push(currentDraft);
+    }
+
+    props.onSend(vs.busySendModeWhenBusy);
+    vs.composerReply = null;
+    vs.composerEdit = null;
+    requestUpdate();
+  };
 
   const splitRatio = props.splitRatio ?? 0.6;
   const sidebarOpen = Boolean(props.sidebarOpen && props.onCloseSidebar);
@@ -895,6 +1117,24 @@ export function renderChat(props: ChatProps) {
             }
             if (item.kind === "group") {
               const entryIds = collectTranscriptEntryIds(item.messages);
+              const latestMessage = item.messages[item.messages.length - 1]?.message;
+              const latestEntryId = resolveTranscriptEntryId(latestMessage);
+              const latestMessageText = (extractText(latestMessage) ?? "").trim();
+              const latestMessageAttachments = extractEditableAttachmentsFromMessage(latestMessage);
+              const normalizedRole = item.role.trim().toLowerCase();
+              const canReplyToGroup = normalizedRole === "assistant";
+              const canEditGroup =
+                normalizedRole === "user" &&
+                Boolean(
+                  latestEntryId ||
+                  latestMessageText.length > 0 ||
+                  latestMessageAttachments.length > 0,
+                );
+              const replyQuote =
+                latestMessageText ||
+                formatQueuedAttachmentText(latestMessageAttachments) ||
+                "Message";
+
               return renderMessageGroup(item, {
                 onOpenSidebar: props.onOpenSidebar,
                 showReasoning,
@@ -919,6 +1159,31 @@ export function renderChat(props: ChatProps) {
                 allowExternalEmbedUrls: props.allowExternalEmbedUrls ?? false,
                 contextWindow:
                   activeSession?.contextTokens ?? props.sessions?.defaults?.contextTokens ?? null,
+                onReply: canReplyToGroup
+                  ? () => {
+                      vs.composerReply = {
+                        entryId: latestEntryId,
+                        quote: replyQuote,
+                      };
+                      vs.composerEdit = null;
+                      requestUpdate();
+                    }
+                  : undefined,
+                onEdit: canEditGroup
+                  ? () => {
+                      props.onDraftChange(latestMessageText);
+                      props.onAttachmentsChange?.(latestMessageAttachments);
+                      vs.composerEdit = {
+                        entryId: latestEntryId,
+                        preview:
+                          latestMessageText ||
+                          formatQueuedAttachmentText(latestMessageAttachments) ||
+                          "Message",
+                      };
+                      vs.composerReply = null;
+                      requestUpdate();
+                    }
+                  : undefined,
                 deleteCount: entryIds.length,
                 onDelete:
                   entryIds.length > 0
@@ -1043,10 +1308,7 @@ export function renderChat(props: ChatProps) {
       }
       e.preventDefault();
       if (canCompose) {
-        if (props.draft.trim()) {
-          inputHistory.push(props.draft);
-        }
-        props.onSend();
+        void sendFromComposer();
       }
     }
   };
@@ -1135,8 +1397,7 @@ export function renderChat(props: ChatProps) {
                   (item) => html`
                     <div class="chat-queue__item">
                       <div class="chat-queue__text">
-                        ${item.text ||
-                        (item.attachments?.length ? `Image (${item.attachments.length})` : "")}
+                        ${item.text || formatQueuedAttachmentText(item.attachments)}
                       </div>
                       <button
                         class="btn chat-queue__remove"
@@ -1167,7 +1428,8 @@ export function renderChat(props: ChatProps) {
 
       <!-- Input bar -->
       <div class="agent-chat__input">
-        ${renderSlashMenu(requestUpdate, props)} ${renderAttachmentPreview(props)}
+        ${renderSlashMenu(requestUpdate, props)} ${renderComposerIntentBanner(requestUpdate)}
+        ${renderAttachmentPreview(props)}
 
         <input
           type="file"
@@ -1269,12 +1531,19 @@ export function renderChat(props: ChatProps) {
             draft: props.draft,
             hasMessages: props.messages.length > 0,
             isBusy,
+            busyModeWhenBusy: vs.busySendModeWhenBusy,
             sending: props.sending,
             onAbort: props.onAbort,
+            onBusyModeChange: (mode) => {
+              vs.busySendModeWhenBusy = mode;
+              requestUpdate();
+            },
             onExport: () => exportMarkdown(props),
             onNewSession: props.onNewSession,
-            onSend: props.onSend,
-            onStoreDraft: (draft) => inputHistory.push(draft),
+            onSend: () => {
+              void sendFromComposer();
+            },
+            onStoreDraft: () => undefined,
           })}
         </div>
       </div>

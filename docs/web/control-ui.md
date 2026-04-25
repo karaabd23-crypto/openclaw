@@ -90,6 +90,7 @@ locale picker lives in the Gateway Access card, not under Appearance.
 ## What it can do (today)
 
 - Chat with the model via Gateway WS (`chat.history`, `chat.send`, `chat.abort`, `chat.inject`)
+- Chat composer attachments for images and other file types; images can render inline, while non-image files are saved as inbound media references
 - Stream tool calls + live tool output cards in Chat (agent events)
 - Channels: built-in plus bundled/external plugin channels status, QR login, and per-channel config (`channels.status`, `web.login.*`, `config.patch`)
 - Instances: presence list + refresh (`system-presence`)
@@ -134,6 +135,9 @@ Cron jobs panel notes:
 - `chat.history` also strips display-only inline directive tags from visible assistant text (for example `[[reply_to_*]]` and `[[audio_as_voice]]`), plain-text tool-call XML payloads (including `<tool_call>...</tool_call>`, `<function_call>...</function_call>`, `<tool_calls>...</tool_calls>`, `<function_calls>...</function_calls>`, and truncated tool-call blocks), and leaked ASCII/full-width model control tokens, and omits assistant entries whose whole visible text is only the exact silent token `NO_REPLY` / `no_reply`.
 - `chat.inject` appends an assistant note to the session transcript and broadcasts a `chat` event for UI-only updates (no agent run, no channel delivery).
 - The chat header model and thinking pickers patch the active session immediately through `sessions.patch`; they are persistent session overrides, not one-turn-only send options.
+- When a run is active, the send button can either queue the draft for the next turn or steer the active run with `/steer`; drafts with attachments are queued so file payloads are not lost.
+- User messages can be edited by loading them back into the composer, deleting the original transcript entry, and sending the revised version.
+- Assistant messages can be replied to from the message footer; the composer injects a display-only reply marker and quote into the outgoing draft.
 - Stop:
   - Click **Stop** (calls `chat.abort`)
   - Type `/stop` (or standalone abort phrases like `stop`, `stop action`, `stop run`, `stop openclaw`, `please stop`) to abort out-of-band

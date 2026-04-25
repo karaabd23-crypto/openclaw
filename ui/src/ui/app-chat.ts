@@ -261,7 +261,7 @@ export function clearPendingQueueItemsForRun(host: ChatHost, runId: string | und
 export async function handleSendChat(
   host: ChatHost,
   messageOverride?: string,
-  opts?: { restoreDraft?: boolean },
+  opts?: { restoreDraft?: boolean; busyModeWhenBusy?: "queue" | "steer" },
 ) {
   if (!host.connected) {
     return;
@@ -327,6 +327,12 @@ export async function handleSendChat(
   }
 
   if (isChatBusy(host)) {
+    // `/steer` is text-only. Attachments are always queued until the active
+    // run finishes.
+    if (!hasAttachments && opts?.busyModeWhenBusy === "steer") {
+      await dispatchSlashCommand(host, "steer", message);
+      return;
+    }
     enqueueChatMessage(host, message, attachmentsToSend, refreshSessions);
     return;
   }

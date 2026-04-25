@@ -2246,7 +2246,7 @@ export function renderApp(state: AppViewState) {
               onRequestUpdate: requestHostUpdate,
               attachments: state.chatAttachments,
               onAttachmentsChange: (next) => (state.chatAttachments = next),
-              onSend: () => state.handleSendChat(),
+              onSend: (busyModeWhenBusy) => state.handleSendChat(undefined, { busyModeWhenBusy }),
               canAbort: Boolean(state.chatRunId),
               onAbort: () => void state.handleAbortChat(),
               onDeleteMessages: async (entryIds) => {

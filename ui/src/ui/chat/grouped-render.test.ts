@@ -186,6 +186,46 @@ describe("grouped chat rendering", () => {
     expect(assistantConfirm?.classList.contains("chat-delete-confirm--right")).toBe(true);
   });
 
+  it("renders reply and edit footer actions when callbacks are provided", () => {
+    const assistantContainer = document.createElement("div");
+    const onReply = vi.fn();
+    renderGroupedMessage(
+      assistantContainer,
+      {
+        role: "assistant",
+        content: "assistant reply",
+        timestamp: Date.now(),
+      },
+      "assistant",
+      { onReply },
+    );
+    const replyButton = assistantContainer.querySelector<HTMLButtonElement>(
+      'button[aria-label="Reply with quote"]',
+    );
+    expect(replyButton).not.toBeNull();
+    replyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onReply).toHaveBeenCalledTimes(1);
+
+    const userContainer = document.createElement("div");
+    const onEdit = vi.fn();
+    renderGroupedMessage(
+      userContainer,
+      {
+        role: "user",
+        content: "user message",
+        timestamp: Date.now(),
+      },
+      "user",
+      { onEdit },
+    );
+    const editButton = userContainer.querySelector<HTMLButtonElement>(
+      'button[aria-label="Edit and resend"]',
+    );
+    expect(editButton).not.toBeNull();
+    editButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps inline tool cards collapsed by default and renders expanded state", () => {
     const container = document.createElement("div");
     const message = {

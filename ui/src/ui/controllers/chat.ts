@@ -203,11 +203,26 @@ export async function loadChatHistory(state: ChatState) {
 }
 
 function dataUrlToBase64(dataUrl: string): { content: string; mimeType: string } | null {
-  const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  const match = /^data:([^,]*);base64,(.+)$/i.exec(dataUrl);
   if (!match) {
     return null;
   }
-  return { mimeType: match[1], content: match[2] };
+  const mimeToken = match[1]?.split(";")[0]?.trim() ?? "";
+  const mimeType = mimeToken.length > 0 ? mimeToken : "application/octet-stream";
+  return { mimeType, content: match[2] };
+}
+
+function inferAttachmentKind(mimeType: string): "image" | "audio" | "video" | "document" {
+  if (mimeType.startsWith("image/")) {
+    return "image";
+  }
+  if (mimeType.startsWith("audio/")) {
+    return "audio";
+  }
+  if (mimeType.startsWith("video/")) {
+    return "video";
+  }
+  return "document";
 }
 
 function buildApiAttachments(attachments?: ChatAttachment[]) {
@@ -220,8 +235,9 @@ function buildApiAttachments(attachments?: ChatAttachment[]) {
             return null;
           }
           return {
-            type: "image",
+            type: parsed.mimeType.startsWith("image/") ? "image" : "file",
             mimeType: parsed.mimeType,
+            fileName: att.fileName,
             content: parsed.content,
           };
         })
@@ -308,16 +324,49 @@ export async function sendChatMessage(
   const now = Date.now();
 
   // Build user message content blocks
-  const contentBlocks: Array<{ type: string; text?: string; source?: unknown }> = [];
+  const contentBlocks: Array<
+    | { type: "text"; text: string }
+    | {
+        type: "image";
+        source: { type: "base64"; media_type: string; data: string };
+      }
+    | {
+        type: "attachment";
+        attachment: {
+          url: string;
+          kind: "image" | "audio" | "video" | "document";
+          label: string;
+          mimeType?: string;
+        };
+      }
+  > = [];
   if (msg) {
     contentBlocks.push({ type: "text", text: msg });
   }
-  // Add image previews to the message for display
+  // Add attachment previews to the local optimistic message for display.
   if (hasAttachments) {
     for (const att of attachments) {
+      const parsed = dataUrlToBase64(att.dataUrl);
+      const mimeType = parsed?.mimeType ?? att.mimeType ?? "application/octet-stream";
+      if (mimeType.startsWith("image/")) {
+        contentBlocks.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: mimeType,
+            data: parsed?.content ?? att.dataUrl,
+          },
+        });
+        continue;
+      }
       contentBlocks.push({
-        type: "image",
-        source: { type: "base64", media_type: att.mimeType, data: att.dataUrl },
+        type: "attachment",
+        attachment: {
+          url: att.dataUrl,
+          kind: inferAttachmentKind(mimeType),
+          label: att.fileName,
+          mimeType,
+        },
       });
     }
   }

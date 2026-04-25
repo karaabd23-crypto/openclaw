@@ -11,8 +11,10 @@ function createProps(overrides: Partial<ChatRunControlsProps> = {}): ChatRunCont
     draft: "",
     hasMessages: false,
     isBusy: false,
+    busyModeWhenBusy: "queue",
     sending: false,
     onAbort: () => undefined,
+    onBusyModeChange: () => undefined,
     onExport: () => undefined,
     onNewSession: () => undefined,
     onSend: () => undefined,
@@ -71,5 +73,27 @@ describe("chat run controls", () => {
     expect(onStoreDraft).toHaveBeenCalledWith(" run this ");
     expect(onSend).toHaveBeenCalledTimes(1);
     expect(container.textContent).not.toContain("Stop");
+  });
+
+  it("toggles busy send mode label", () => {
+    const container = document.createElement("div");
+    const onBusyModeChange = vi.fn();
+    render(
+      renderChatRunControls(
+        createProps({
+          isBusy: true,
+          busyModeWhenBusy: "queue",
+          onBusyModeChange,
+        }),
+      ),
+      container,
+    );
+
+    const toggleButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Toggle busy send mode"]',
+    );
+    expect(toggleButton?.textContent).toContain("Queue");
+    toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onBusyModeChange).toHaveBeenCalledWith("steer");
   });
 });

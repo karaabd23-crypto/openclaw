@@ -107,6 +107,11 @@
   color: var(--danger) !important;
 }
 
+.chat-group-reply:hover,
+.chat-group-edit:hover {
+  color: var(--accent) !important;
+}
+
 /* Chat divider (e.g., compaction marker) */
 .chat-divider {
   display: flex;

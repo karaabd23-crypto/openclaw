@@ -192,7 +192,7 @@
   z-index: 10;
 }
 
-/* Image attachments preview */
+/* Composer attachment preview */
 .chat-attachments {
   display: inline-flex;
   flex-wrap: wrap;
@@ -817,6 +817,48 @@
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.chat-compose-intent {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.chat-compose-intent__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--card);
+  max-width: 100%;
+}
+
+.chat-compose-intent__pill svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.chat-compose-intent__pill--reply {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.chat-compose-intent__pill--edit {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+}
+
+.chat-compose-intent__clear {
+  padding: 2px 8px;
+  font-size: 12px;
 }
 
 .chat-attachment-thumb {

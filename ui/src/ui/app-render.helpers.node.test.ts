@@ -485,7 +485,9 @@ describe("switchChatSession", () => {
     const state = {
       sessionKey: "main",
       chatMessage: "draft",
-      chatAttachments: [{ mimeType: "image/png", dataUrl: "data:image/png;base64,AAA" }],
+      chatAttachments: [
+        { mimeType: "image/png", dataUrl: "data:image/png;base64,AAA", fileName: "image.png" },
+      ],
       chatMessages: [{ role: "assistant", content: "old" }],
       chatToolMessages: [{ id: "tool-1" }],
       chatStreamSegments: [{ text: "segment", ts: 1 }],

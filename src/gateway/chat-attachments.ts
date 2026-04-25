@@ -76,6 +76,31 @@ type NormalizedAttachment = {
   base64: string;
 };
 
+function resolveFinalAttachmentMime(params: {
+  label: string;
+  providedMime?: string;
+  sniffedMime?: string;
+  log?: AttachmentLog;
+}): { mimeType: string; inlineAsImage: boolean } | null {
+  const providedMime = normalizeMime(params.providedMime);
+  const sniffedMime = normalizeMime(params.sniffedMime);
+
+  if (sniffedMime) {
+    if (providedMime && isImageMime(providedMime) && sniffedMime !== providedMime) {
+      params.log?.warn(
+        `attachment ${params.label}: mime mismatch (${providedMime} -> ${sniffedMime}), using sniffed`,
+      );
+    }
+    return { mimeType: sniffedMime, inlineAsImage: isImageMime(sniffedMime) };
+  }
+
+  if (providedMime) {
+    return { mimeType: providedMime, inlineAsImage: isImageMime(providedMime) };
+  }
+
+  return null;
+}
+
 type SavedMedia = {
   id: string;
   path?: string;
@@ -356,29 +381,24 @@ export async function parseMessageWithAttachments(
 
       const providedMime = normalizeMime(mime);
       const sniffedMime = normalizeMime(await sniffMimeFromBase64(b64));
-
-      if (sniffedMime && !isImageMime(sniffedMime)) {
-        log?.warn(`attachment ${label}: detected non-image (${sniffedMime}), dropping`);
+      const resolvedMime = resolveFinalAttachmentMime({
+        label,
+        providedMime,
+        sniffedMime,
+        log,
+      });
+      if (!resolvedMime) {
+        log?.warn(`attachment ${label}: missing mime type, dropping`);
         continue;
       }
-      if (!sniffedMime && !isImageMime(providedMime)) {
-        log?.warn(`attachment ${label}: unable to detect image mime type, dropping`);
-        continue;
-      }
-      if (sniffedMime && providedMime && sniffedMime !== providedMime) {
-        log?.warn(
-          `attachment ${label}: mime mismatch (${providedMime} -> ${sniffedMime}), using sniffed`,
-        );
-      }
 
-      // Third fallback normalises `mime` so a raw un-normalised string (e.g.
-      // "IMAGE/JPEG") does not silently bypass the SUPPORTED_OFFLOAD_MIMES check.
-      const finalMime = sniffedMime ?? providedMime ?? normalizeMime(mime) ?? mime;
+      const finalMime = resolvedMime.mimeType;
+      const inlineAsImage = resolvedMime.inlineAsImage;
 
       let isOffloaded = false;
 
-      if (sizeBytes > OFFLOAD_THRESHOLD_BYTES) {
-        const isSupportedForOffload = SUPPORTED_OFFLOAD_MIMES.has(finalMime);
+      if (!inlineAsImage || sizeBytes > OFFLOAD_THRESHOLD_BYTES) {
+        const isSupportedForOffload = !inlineAsImage || SUPPORTED_OFFLOAD_MIMES.has(finalMime);
 
         if (!isSupportedForOffload) {
           // Passing this inline would reintroduce the OOM risk this PR prevents.
@@ -417,8 +437,8 @@ export async function parseMessageWithAttachments(
           // the Gateway from the agent's filesystem layout.
           const mediaRef = `media://inbound/${savedMedia.id}`;
 
-          updatedMessage += `\n[media attached: ${mediaRef}]`;
-          log?.info?.(`[Gateway] Intercepted large image payload. Saved: ${mediaRef}`);
+          updatedMessage += `\n[media attached: ${label} (${finalMime}) => ${mediaRef}]`;
+          log?.info?.(`[Gateway] Intercepted attachment payload. Saved: ${mediaRef}`);
 
           // Record for transcript metadata — separate from `images` because
           // these are not passed inline to the model.
@@ -429,7 +449,9 @@ export async function parseMessageWithAttachments(
             mimeType: finalMime,
             label,
           });
-          imageOrder.push("offloaded");
+          if (inlineAsImage) {
+            imageOrder.push("offloaded");
+          }
 
           isOffloaded = true;
         } catch (err) {
@@ -445,8 +467,10 @@ export async function parseMessageWithAttachments(
         continue;
       }
 
-      images.push({ type: "image", data: b64, mimeType: finalMime });
-      imageOrder.push("inline");
+      if (inlineAsImage) {
+        images.push({ type: "image", data: b64, mimeType: finalMime });
+        imageOrder.push("inline");
+      }
     }
   } catch (err) {
     // Best-effort cleanup before rethrowing.

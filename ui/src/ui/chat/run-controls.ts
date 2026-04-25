@@ -7,8 +7,10 @@ export type ChatRunControlsProps = {
   draft: string;
   hasMessages: boolean;
   isBusy: boolean;
+  busyModeWhenBusy: "queue" | "steer";
   sending: boolean;
   onAbort?: () => void;
+  onBusyModeChange: (mode: "queue" | "steer") => void;
   onExport: () => void;
   onNewSession: () => void;
   onSend: () => void;
@@ -39,6 +41,15 @@ export function renderChatRunControls(props: ChatRunControlsProps) {
       >
         ${icons.download}
       </button>
+      <button
+        class="btn btn--ghost"
+        @click=${() =>
+          props.onBusyModeChange(props.busyModeWhenBusy === "queue" ? "steer" : "queue")}
+        title="When a run is active, choose whether Send queues or steers"
+        aria-label="Toggle busy send mode"
+      >
+        ${props.busyModeWhenBusy === "queue" ? "Queue" : "Steer"}
+      </button>
 
       ${props.canAbort
         ? html`
@@ -51,22 +62,21 @@ export function renderChatRunControls(props: ChatRunControlsProps) {
               ${icons.stop}
             </button>
           `
-        : html`
-            <button
-              class="chat-send-btn"
-              @click=${() => {
-                if (props.draft.trim()) {
-                  props.onStoreDraft(props.draft);
-                }
-                props.onSend();
-              }}
-              ?disabled=${!props.connected || props.sending}
-              title=${props.isBusy ? "Queue" : "Send"}
-              aria-label=${props.isBusy ? "Queue message" : "Send message"}
-            >
-              ${icons.send}
-            </button>
-          `}
+        : nothing}
+      <button
+        class="chat-send-btn"
+        @click=${() => {
+          if (props.draft.trim()) {
+            props.onStoreDraft(props.draft);
+          }
+          props.onSend();
+        }}
+        ?disabled=${!props.connected || props.sending}
+        title=${props.isBusy ? (props.busyModeWhenBusy === "steer" ? "Steer" : "Queue") : "Send"}
+        aria-label=${props.isBusy ? `${props.busyModeWhenBusy} message` : "Send message"}
+      >
+        ${icons.send}
+      </button>
     </div>
   `;
 }

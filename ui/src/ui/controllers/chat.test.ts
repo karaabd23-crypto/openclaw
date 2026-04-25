@@ -652,6 +652,71 @@ describe("sendChatMessage", () => {
       ],
     });
   });
+
+  it("keeps non-image attachments as attachment blocks in the optimistic user message", async () => {
+    const request = vi.fn().mockResolvedValue({ ok: true });
+    const state = createState({
+      connected: true,
+      client: { request } as unknown as ChatState["client"],
+    });
+
+    const result = await sendChatMessage(state, "", [
+      {
+        id: "att-image",
+        dataUrl: "data:image/png;base64,AAAA",
+        mimeType: "image/png",
+        fileName: "preview.png",
+      },
+      {
+        id: "att-pdf",
+        dataUrl: "data:application/pdf;base64,JVBERg==",
+        mimeType: "application/pdf",
+        fileName: "spec.pdf",
+      },
+    ]);
+
+    expect(result).toEqual(expect.any(String));
+    expect(request).toHaveBeenCalledWith(
+      "chat.send",
+      expect.objectContaining({
+        attachments: [
+          {
+            type: "image",
+            mimeType: "image/png",
+            fileName: "preview.png",
+            content: "AAAA",
+          },
+          {
+            type: "file",
+            mimeType: "application/pdf",
+            fileName: "spec.pdf",
+            content: "JVBERg==",
+          },
+        ],
+      }),
+    );
+    expect(state.chatMessages.at(-1)).toMatchObject({
+      role: "user",
+      content: [
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: "image/png",
+            data: "AAAA",
+          },
+        },
+        {
+          type: "attachment",
+          attachment: {
+            kind: "document",
+            label: "spec.pdf",
+            mimeType: "application/pdf",
+          },
+        },
+      ],
+    });
+  });
 });
 
 describe("abortChatRun", () => {

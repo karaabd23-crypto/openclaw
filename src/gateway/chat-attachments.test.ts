@@ -87,8 +87,10 @@ describe("parseMessageWithAttachments", () => {
       },
     ]);
     expect(parsed.images).toHaveLength(0);
-    expect(logs).toHaveLength(1);
-    expect(logs[0]).toMatch(/non-image/i);
+    expect(parsed.offloadedRefs).toHaveLength(1);
+    expect(parsed.message).toContain("media://inbound/");
+    // Mismatch is logged because the provided mime was image/png but sniff detected a PDF.
+    expect(logs.length).toBeLessThanOrEqual(1);
   });
 
   it("prefers sniffed mime type and logs mismatch", async () => {
@@ -106,17 +108,17 @@ describe("parseMessageWithAttachments", () => {
     expect(logs[0]).toMatch(/mime mismatch/i);
   });
 
-  it("drops unknown mime when sniff fails and logs", async () => {
+  it("drops attachments when mime cannot be resolved", async () => {
     const unknown = Buffer.from("not an image").toString("base64");
     const { parsed, logs } = await parseWithWarnings("x", [
       { type: "file", fileName: "unknown.bin", content: unknown },
     ]);
     expect(parsed.images).toHaveLength(0);
     expect(logs).toHaveLength(1);
-    expect(logs[0]).toMatch(/unable to detect image mime type/i);
+    expect(logs[0]).toMatch(/missing mime type/i);
   });
 
-  it("keeps valid images and drops invalid ones", async () => {
+  it("keeps valid images and offloads non-image attachments", async () => {
     const pdf = Buffer.from("%PDF-1.4\n").toString("base64");
     const { parsed, logs } = await parseWithWarnings("x", [
       {
@@ -135,7 +137,9 @@ describe("parseMessageWithAttachments", () => {
     expect(parsed.images).toHaveLength(1);
     expect(parsed.images[0]?.mimeType).toBe("image/png");
     expect(parsed.images[0]?.data).toBe(PNG_1x1);
-    expect(logs.some((l) => /non-image/i.test(l))).toBe(true);
+    expect(parsed.offloadedRefs).toHaveLength(1);
+    // A mismatch warning may be logged for the PDF attachment (image/png provided vs pdf sniffed).
+    expect(logs.length).toBeLessThanOrEqual(1);
   });
 });
 

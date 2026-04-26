@@ -97,6 +97,7 @@ export type ChatProps = {
   onQueueRemove: (id: string) => void;
   onQueueEdit?: (id: string) => void;
   onQueuePromote?: (id: string) => void;
+  onQueueSteer?: (id: string) => void;
   onDismissSideResult?: () => void;
   onNewSession: () => void;
   onClearHistory?: () => void;
@@ -1412,11 +1413,34 @@ export function renderChat(props: ChatProps) {
               <div class="chat-queue__list">
                 ${props.queue.map(
                   (item) => html`
-                    <div class="chat-queue__item">
+                    <div
+                      class="chat-queue__item ${item.sendAsSteer ? "chat-queue__item--steer" : ""}"
+                    >
                       <div class="chat-queue__text">
                         ${item.text || formatQueuedAttachmentText(item.attachments)}
+                        ${item.sendAsSteer
+                          ? html`<span class="chat-queue__steer-badge">steer</span>`
+                          : nothing}
                       </div>
                       <div class="chat-queue__actions">
+                        ${props.onQueueSteer
+                          ? html`
+                              <button
+                                class="btn btn--xs chat-queue__steer ${item.sendAsSteer
+                                  ? "chat-queue__steer--active"
+                                  : ""}"
+                                type="button"
+                                title="${item.sendAsSteer
+                                  ? "Undo steer (send as queue)"
+                                  : "Mark as steer (inject when run ends)"}"
+                                aria-label="${item.sendAsSteer ? "Undo steer" : "Mark as steer"}"
+                                aria-pressed="${item.sendAsSteer}"
+                                @click=${() => props.onQueueSteer!(item.id)}
+                              >
+                                ${icons.zap}
+                              </button>
+                            `
+                          : nothing}
                         ${props.onQueuePromote
                           ? html`
                               <button

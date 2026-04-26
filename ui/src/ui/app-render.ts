@@ -2256,6 +2256,7 @@ export function renderApp(state: AppViewState) {
               },
               onQueueRemove: (id) => state.removeQueuedMessage(id),
               onQueueEdit: (id) => state.editQueuedMessage(id),
+              onQueueSteer: (id) => state.steerQueuedMessage(id),
               onQueuePromote: async (id) => {
                 const item = state.chatQueue.find((q) => q.id === id);
                 if (!item) {

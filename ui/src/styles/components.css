@@ -2567,6 +2567,38 @@ td.data-table-key-col {
   height: 13px;
 }
 
+.chat-queue__item--steer {
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.chat-queue__steer-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
+.chat-queue__steer {
+  color: var(--muted);
+}
+
+.chat-queue__steer--active {
+  color: var(--accent);
+}
+
+.chat-queue__steer:hover {
+  color: var(--accent);
+}
+
 .chat-queue__promote {
   color: var(--accent);
 }

@@ -14,6 +14,7 @@ export type ChatQueueItem = {
   localCommandArgs?: string;
   localCommandName?: string;
   pendingRunId?: string;
+  sendAsSteer?: boolean;
 };
 
 export const CRON_CHANNEL_LAST = "last";

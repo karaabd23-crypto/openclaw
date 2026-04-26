@@ -230,6 +230,9 @@ async function flushChatQueue(host: ChatHost) {
     if (next.localCommandName) {
       await dispatchSlashCommand(host, next.localCommandName, next.localCommandArgs ?? "");
       ok = true;
+    } else if (next.sendAsSteer) {
+      await dispatchSlashCommand(host, "steer", next.text);
+      ok = true;
     } else {
       ok = await sendChatMessageNow(host, next.text, {
         attachments: next.attachments,
@@ -258,6 +261,12 @@ export function editQueuedMessage(host: ChatHost, id: string) {
   }
   host.chatQueue = host.chatQueue.filter((q) => q.id !== id);
   host.chatMessage = item.text;
+}
+
+export function steerQueuedMessage(host: ChatHost, id: string) {
+  host.chatQueue = host.chatQueue.map((item) =>
+    item.id === id ? { ...item, sendAsSteer: !item.sendAsSteer } : item,
+  );
 }
 
 export function clearPendingQueueItemsForRun(host: ChatHost, runId: string | undefined) {

@@ -20,6 +20,7 @@ import {
   handleSendChat as handleSendChatInternal,
   removeQueuedMessage as removeQueuedMessageInternal,
   editQueuedMessage as editQueuedMessageInternal,
+  steerQueuedMessage as steerQueuedMessageInternal,
 } from "./app-chat.ts";
 import { DEFAULT_CRON_FORM, DEFAULT_LOG_LEVEL_FILTERS } from "./app-defaults.ts";
 import type { EventLogEntry } from "./app-events.ts";
@@ -691,6 +692,13 @@ export class OpenClawApp extends LitElement {
   editQueuedMessage(id: string) {
     editQueuedMessageInternal(
       this as unknown as Parameters<typeof editQueuedMessageInternal>[0],
+      id,
+    );
+  }
+
+  steerQueuedMessage(id: string) {
+    steerQueuedMessageInternal(
+      this as unknown as Parameters<typeof steerQueuedMessageInternal>[0],
       id,
     );
   }

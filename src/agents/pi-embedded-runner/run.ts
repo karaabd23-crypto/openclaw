@@ -50,7 +50,7 @@ import {
   resolveAuthProfileOrder,
   shouldPreferExplicitConfigApiKeyAuth,
 } from "../model-auth.js";
-import { normalizeProviderId } from "../model-selection.js";
+import { normalizeProviderId, resolvePlanningModelSelection } from "../model-selection.js";
 import { ensureOpenClawModelsJson } from "../models-config.js";
 import { disposeSessionMcpRuntime } from "../pi-bundle-mcp-tools.js";
 import {
@@ -491,6 +491,20 @@ export async function runEmbeddedPiAgent(
             stepTitle: "Execute one evidence-backed step",
           })
         : undefined;
+      // When criticLoopEnabled and a dedicated planningModel is configured, use it as primary.
+      if (criticLoopEnabled) {
+        const planningModelSelection = resolvePlanningModelSelection({ cfg: params.config });
+        if (planningModelSelection) {
+          const slashIdx = planningModelSelection.indexOf("/");
+          if (slashIdx > 0) {
+            provider = planningModelSelection.slice(0, slashIdx);
+            modelId = planningModelSelection.slice(slashIdx + 1);
+          } else {
+            modelId = planningModelSelection;
+          }
+        }
+      }
+
       const maxPlanningOnlyRetryAttempts = resolvePlanningOnlyRetryLimit(executionContract);
       const maxReasoningOnlyRetryAttempts = DEFAULT_REASONING_ONLY_RETRY_LIMIT;
       const maxEmptyResponseRetryAttempts = DEFAULT_EMPTY_RESPONSE_RETRY_LIMIT;

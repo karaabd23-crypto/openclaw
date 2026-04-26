@@ -3199,6 +3199,31 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                 ],
               },
+              planningModel: {
+                anyOf: [
+                  {
+                    type: "string",
+                  },
+                  {
+                    type: "object",
+                    properties: {
+                      primary: {
+                        type: "string",
+                        title: "Planning Model",
+                      },
+                      fallbacks: {
+                        type: "array",
+                        items: {
+                          type: "string",
+                        },
+                        title: "Planning Model Fallbacks",
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                ],
+                title: "Planning Model",
+              },
               pdfMaxBytesMb: {
                 type: "number",
                 exclusiveMinimum: 0,
@@ -4736,6 +4761,104 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     title: "Embedded Pi Execution Contract",
                     description:
                       'Embedded Pi execution contract: "default" keeps the standard runner behavior, while "strict-agentic" keeps OpenAI/OpenAI Codex GPT-5-family runs acting until they hit a real blocker instead of stopping at plans or filler.',
+                  },
+                  criticLoop: {
+                    type: "object",
+                    properties: {
+                      enabled: {
+                        type: "boolean",
+                        title: "Embedded Pi Critic Loop Enabled",
+                      },
+                      maxRevisions: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Embedded Pi Critic Loop Max Revisions",
+                      },
+                      runOnTriggers: {
+                        type: "array",
+                        items: {
+                          anyOf: [
+                            {
+                              type: "string",
+                              const: "cron",
+                            },
+                            {
+                              type: "string",
+                              const: "heartbeat",
+                            },
+                            {
+                              type: "string",
+                              const: "manual",
+                            },
+                            {
+                              type: "string",
+                              const: "memory",
+                            },
+                            {
+                              type: "string",
+                              const: "overflow",
+                            },
+                            {
+                              type: "string",
+                              const: "user",
+                            },
+                          ],
+                        },
+                        title: "Embedded Pi Critic Loop Triggers",
+                      },
+                      runOnTaskKinds: {
+                        type: "array",
+                        items: {
+                          anyOf: [
+                            {
+                              type: "string",
+                              const: "code_changes",
+                            },
+                            {
+                              type: "string",
+                              const: "website_edits",
+                            },
+                            {
+                              type: "string",
+                              const: "seo_changes",
+                            },
+                            {
+                              type: "string",
+                              const: "workflow_automation",
+                            },
+                            {
+                              type: "string",
+                              const: "content_generation",
+                            },
+                            {
+                              type: "string",
+                              const: "general",
+                            },
+                          ],
+                        },
+                        title: "Embedded Pi Critic Loop Task Kinds",
+                      },
+                      requireValidation: {
+                        type: "boolean",
+                        title: "Embedded Pi Critic Loop Require Validation",
+                      },
+                      diagnostics: {
+                        anyOf: [
+                          {
+                            type: "string",
+                            const: "off",
+                          },
+                          {
+                            type: "string",
+                            const: "on",
+                          },
+                        ],
+                        title: "Embedded Pi Critic Loop Diagnostics",
+                      },
+                    },
+                    additionalProperties: false,
+                    title: "Embedded Pi Critic Loop",
                   },
                 },
                 additionalProperties: false,
@@ -6464,6 +6587,104 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       title: "Agent Embedded Pi Execution Contract",
                       description:
                         'Optional per-agent embedded Pi execution contract override. Set "strict-agentic" to keep that agent acting through plan-only turns on OpenAI/OpenAI Codex GPT-5-family runs, or "default" to inherit the standard runner behavior.',
+                    },
+                    criticLoop: {
+                      type: "object",
+                      properties: {
+                        enabled: {
+                          type: "boolean",
+                          title: "Agent Critic Loop Enabled",
+                        },
+                        maxRevisions: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Agent Critic Loop Max Revisions",
+                        },
+                        runOnTriggers: {
+                          type: "array",
+                          items: {
+                            anyOf: [
+                              {
+                                type: "string",
+                                const: "cron",
+                              },
+                              {
+                                type: "string",
+                                const: "heartbeat",
+                              },
+                              {
+                                type: "string",
+                                const: "manual",
+                              },
+                              {
+                                type: "string",
+                                const: "memory",
+                              },
+                              {
+                                type: "string",
+                                const: "overflow",
+                              },
+                              {
+                                type: "string",
+                                const: "user",
+                              },
+                            ],
+                          },
+                          title: "Agent Critic Loop Triggers",
+                        },
+                        runOnTaskKinds: {
+                          type: "array",
+                          items: {
+                            anyOf: [
+                              {
+                                type: "string",
+                                const: "code_changes",
+                              },
+                              {
+                                type: "string",
+                                const: "website_edits",
+                              },
+                              {
+                                type: "string",
+                                const: "seo_changes",
+                              },
+                              {
+                                type: "string",
+                                const: "workflow_automation",
+                              },
+                              {
+                                type: "string",
+                                const: "content_generation",
+                              },
+                              {
+                                type: "string",
+                                const: "general",
+                              },
+                            ],
+                          },
+                          title: "Agent Critic Loop Task Kinds",
+                        },
+                        requireValidation: {
+                          type: "boolean",
+                          title: "Agent Critic Loop Require Validation",
+                        },
+                        diagnostics: {
+                          anyOf: [
+                            {
+                              type: "string",
+                              const: "off",
+                            },
+                            {
+                              type: "string",
+                              const: "on",
+                            },
+                          ],
+                          title: "Agent Critic Loop Diagnostics",
+                        },
+                      },
+                      additionalProperties: false,
+                      title: "Agent Critic Loop",
                     },
                   },
                   additionalProperties: false,
@@ -25760,6 +25981,18 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Ordered fallback PDF models (provider/model).",
       tags: ["reliability"],
     },
+    "agents.defaults.planningModel": {
+      label: "Planning Model",
+      tags: ["advanced"],
+    },
+    "agents.defaults.planningModel.primary": {
+      label: "Planning Model",
+      tags: ["advanced"],
+    },
+    "agents.defaults.planningModel.fallbacks": {
+      label: "Planning Model Fallbacks",
+      tags: ["reliability"],
+    },
     "agents.defaults.pdfMaxBytesMb": {
       label: "PDF Max Size (MB)",
       help: "Maximum PDF file size in megabytes for the PDF tool (default: 10).",
@@ -25935,6 +26168,34 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: 'Embedded Pi execution contract: "default" keeps the standard runner behavior, while "strict-agentic" keeps OpenAI/OpenAI Codex GPT-5-family runs acting until they hit a real blocker instead of stopping at plans or filler.',
       tags: ["advanced"],
     },
+    "agents.defaults.embeddedPi.criticLoop": {
+      label: "Embedded Pi Critic Loop",
+      tags: ["advanced"],
+    },
+    "agents.defaults.embeddedPi.criticLoop.enabled": {
+      label: "Embedded Pi Critic Loop Enabled",
+      tags: ["advanced"],
+    },
+    "agents.defaults.embeddedPi.criticLoop.maxRevisions": {
+      label: "Embedded Pi Critic Loop Max Revisions",
+      tags: ["performance"],
+    },
+    "agents.defaults.embeddedPi.criticLoop.runOnTriggers": {
+      label: "Embedded Pi Critic Loop Triggers",
+      tags: ["advanced"],
+    },
+    "agents.defaults.embeddedPi.criticLoop.runOnTaskKinds": {
+      label: "Embedded Pi Critic Loop Task Kinds",
+      tags: ["advanced"],
+    },
+    "agents.defaults.embeddedPi.criticLoop.requireValidation": {
+      label: "Embedded Pi Critic Loop Require Validation",
+      tags: ["advanced"],
+    },
+    "agents.defaults.embeddedPi.criticLoop.diagnostics": {
+      label: "Embedded Pi Critic Loop Diagnostics",
+      tags: ["observability"],
+    },
     "agents.defaults.heartbeat.includeSystemPromptSection": {
       label: "Heartbeat Include System Prompt Section",
       help: "Includes the default agent's ## Heartbeats system prompt section when true. Turn this off to keep heartbeat runtime behavior while omitting the heartbeat prompt instructions from the agent system prompt.",
@@ -25954,6 +26215,34 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       label: "Agent Embedded Pi Execution Contract",
       help: 'Optional per-agent embedded Pi execution contract override. Set "strict-agentic" to keep that agent acting through plan-only turns on OpenAI/OpenAI Codex GPT-5-family runs, or "default" to inherit the standard runner behavior.',
       tags: ["advanced"],
+    },
+    "agents.list[].embeddedPi.criticLoop": {
+      label: "Agent Critic Loop",
+      tags: ["advanced"],
+    },
+    "agents.list[].embeddedPi.criticLoop.enabled": {
+      label: "Agent Critic Loop Enabled",
+      tags: ["advanced"],
+    },
+    "agents.list[].embeddedPi.criticLoop.maxRevisions": {
+      label: "Agent Critic Loop Max Revisions",
+      tags: ["performance"],
+    },
+    "agents.list[].embeddedPi.criticLoop.runOnTriggers": {
+      label: "Agent Critic Loop Triggers",
+      tags: ["advanced"],
+    },
+    "agents.list[].embeddedPi.criticLoop.runOnTaskKinds": {
+      label: "Agent Critic Loop Task Kinds",
+      tags: ["advanced"],
+    },
+    "agents.list[].embeddedPi.criticLoop.requireValidation": {
+      label: "Agent Critic Loop Require Validation",
+      tags: ["advanced"],
+    },
+    "agents.list[].embeddedPi.criticLoop.diagnostics": {
+      label: "Agent Critic Loop Diagnostics",
+      tags: ["observability"],
     },
     "agents.defaults.heartbeat.directPolicy": {
       label: "Heartbeat Direct Policy",

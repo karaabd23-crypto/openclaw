@@ -67,7 +67,7 @@ describe("chat run controls", () => {
     newSessionButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onNewSession).toHaveBeenCalledTimes(1);
 
-    const sendButton = container.querySelector<HTMLButtonElement>('button[title="Send"]');
+    const sendButton = container.querySelector<HTMLButtonElement>('button[title="Send (Enter)"]');
     expect(sendButton).not.toBeNull();
     sendButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onStoreDraft).toHaveBeenCalledWith(" run this ");

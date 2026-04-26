@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { applyPluginAutoEnable } from "./plugin-auto-enable.js";
+import {
+  applyPluginAutoEnable,
+  materializePluginAutoEnableCandidates,
+} from "./plugin-auto-enable.js";
 import {
   makeIsolatedEnv,
   makeRegistry,
@@ -247,13 +250,20 @@ describe("applyPluginAutoEnable providers", () => {
     expect(result.changes).toContain("acme tool configured, enabled automatically.");
   });
 
-  it("auto-enables acpx plugin when ACP is configured", () => {
-    const result = applyPluginAutoEnable({
+  it("materializes acpx setup auto-enable when ACP is configured", () => {
+    const result = materializePluginAutoEnableCandidates({
       config: {
         acp: {
           enabled: true,
         },
       },
+      candidates: [
+        {
+          pluginId: "acpx",
+          kind: "setup-auto-enable",
+          reason: "ACP runtime configured",
+        },
+      ],
       env: makeIsolatedEnv(),
     });
 
@@ -261,14 +271,15 @@ describe("applyPluginAutoEnable providers", () => {
     expect(result.changes.join("\n")).toContain("ACP runtime configured, enabled automatically.");
   });
 
-  it("does not auto-enable acpx when a different ACP backend is configured", () => {
-    const result = applyPluginAutoEnable({
+  it("does not materialize acpx when no setup auto-enable candidate is present", () => {
+    const result = materializePluginAutoEnableCandidates({
       config: {
         acp: {
           enabled: true,
           backend: "custom-runtime",
         },
       },
+      candidates: [],
       env: makeIsolatedEnv(),
     });
 

@@ -251,6 +251,15 @@ export function removeQueuedMessage(host: ChatHost, id: string) {
   host.chatQueue = host.chatQueue.filter((item) => item.id !== id);
 }
 
+export function editQueuedMessage(host: ChatHost, id: string) {
+  const item = host.chatQueue.find((q) => q.id === id);
+  if (!item) {
+    return;
+  }
+  host.chatQueue = host.chatQueue.filter((q) => q.id !== id);
+  host.chatMessage = item.text;
+}
+
 export function clearPendingQueueItemsForRun(host: ChatHost, runId: string | undefined) {
   if (!runId) {
     return;

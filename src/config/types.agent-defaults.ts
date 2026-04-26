@@ -215,6 +215,8 @@ export type AgentDefaultsConfig = {
   mediaGenerationAutoProviderFallback?: boolean;
   /** Optional PDF-capable model and fallbacks (provider/model). Accepts string or {primary,fallbacks}. */
   pdfModel?: AgentModelConfig;
+  /** Optional planning model used for critic-loop planner turns. Falls back to primary model when unset. */
+  planningModel?: AgentModelConfig;
   /** Maximum PDF file size in megabytes (default: 10). */
   pdfMaxBytesMb?: number;
   /** Maximum number of PDF pages to process (default: 20). */

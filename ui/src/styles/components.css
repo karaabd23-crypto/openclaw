@@ -2549,11 +2549,38 @@ td.data-table-key-col {
   -webkit-box-orient: vertical;
 }
 
-.chat-queue__remove {
+.chat-queue__actions {
+  display: flex;
+  gap: 4px;
   align-self: start;
-  padding: 4px 10px;
+  flex-shrink: 0;
+}
+
+.chat-queue__actions .btn--xs {
+  padding: 3px 6px;
   font-size: 12px;
   line-height: 1;
+}
+
+.chat-queue__actions svg {
+  width: 13px;
+  height: 13px;
+}
+
+.chat-queue__promote {
+  color: var(--accent);
+}
+
+.chat-queue__edit {
+  color: var(--muted);
+}
+
+.chat-queue__remove {
+  color: var(--muted);
+}
+
+.chat-queue__remove:hover {
+  color: var(--danger);
 }
 
 /* New messages indicator */

@@ -214,6 +214,14 @@ function resolveAllowedFallbacks(params: { cfg: OpenClawConfig; agentId?: string
   return resolveAgentModelFallbackValues(params.cfg.agents?.defaults?.model);
 }
 
+export function resolvePlanningModelSelection(params: {
+  cfg: OpenClawConfig | undefined;
+}): string | undefined {
+  return normalizeModelSelection(
+    resolveAgentModelPrimaryValue(params.cfg?.agents?.defaults?.planningModel),
+  );
+}
+
 export function resolveSubagentConfiguredModelSelection(params: {
   cfg: OpenClawConfig;
   agentId: string;

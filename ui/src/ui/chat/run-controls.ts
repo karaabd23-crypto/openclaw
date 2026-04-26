@@ -14,6 +14,7 @@ export type ChatRunControlsProps = {
   onExport: () => void;
   onNewSession: () => void;
   onSend: () => void;
+  onSendSteer?: () => void;
   onStoreDraft: (draft: string) => void;
 };
 
@@ -65,15 +66,21 @@ export function renderChatRunControls(props: ChatRunControlsProps) {
         : nothing}
       <button
         class="chat-send-btn"
-        @click=${() => {
+        @click=${(e: MouseEvent) => {
           if (props.draft.trim()) {
             props.onStoreDraft(props.draft);
           }
-          props.onSend();
+          if ((e.ctrlKey || e.metaKey) && props.onSendSteer) {
+            props.onSendSteer();
+          } else {
+            props.onSend();
+          }
         }}
         ?disabled=${!props.connected || props.sending}
-        title=${props.isBusy ? (props.busyModeWhenBusy === "steer" ? "Steer" : "Queue") : "Send"}
-        aria-label=${props.isBusy ? `${props.busyModeWhenBusy} message` : "Send message"}
+        title=${props.isBusy
+          ? "Queue message (Enter) · Ctrl+click or Ctrl+Enter to Steer"
+          : "Send (Enter)"}
+        aria-label=${props.isBusy ? "Queue or steer message" : "Send message"}
       >
         ${icons.send}
       </button>

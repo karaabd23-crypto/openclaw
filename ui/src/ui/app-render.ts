@@ -2255,6 +2255,15 @@ export function renderApp(state: AppViewState) {
                 return deleted;
               },
               onQueueRemove: (id) => state.removeQueuedMessage(id),
+              onQueueEdit: (id) => state.editQueuedMessage(id),
+              onQueuePromote: async (id) => {
+                const item = state.chatQueue.find((q) => q.id === id);
+                if (!item) {
+                  return;
+                }
+                state.removeQueuedMessage(id);
+                await state.handleSendChat(item.text, { busyModeWhenBusy: "steer" });
+              },
               onDismissSideResult: () => {
                 state.chatSideResult = null;
               },

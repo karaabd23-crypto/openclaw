@@ -95,6 +95,8 @@ export type ChatProps = {
   onSend: (busyModeWhenBusy?: "queue" | "steer") => void;
   onAbort?: () => void;
   onQueueRemove: (id: string) => void;
+  onQueueEdit?: (id: string) => void;
+  onQueuePromote?: (id: string) => void;
   onDismissSideResult?: () => void;
   onNewSession: () => void;
   onClearHistory?: () => void;
@@ -952,13 +954,13 @@ export function renderChat(props: ChatProps) {
   const placeholder = props.connected
     ? hasAttachments
       ? "Add a message or paste more files..."
-      : `Message ${props.assistantName || "agent"} (Enter to send)`
+      : `Message ${props.assistantName || "agent"} (Enter to send · Ctrl+Enter to steer)`
     : "Connect to the gateway to start chatting...";
 
   const requestUpdate = props.onRequestUpdate ?? (() => {});
   const getDraft = props.getDraft ?? (() => props.draft);
 
-  const sendFromComposer = async () => {
+  const sendFromComposer = async (modeOverride?: "queue" | "steer") => {
     if (!props.connected) {
       return;
     }
@@ -995,7 +997,7 @@ export function renderChat(props: ChatProps) {
       inputHistory.push(currentDraft);
     }
 
-    props.onSend(vs.busySendModeWhenBusy);
+    props.onSend(modeOverride ?? vs.busySendModeWhenBusy);
     vs.composerReply = null;
     vs.composerEdit = null;
     requestUpdate();
@@ -1298,7 +1300,22 @@ export function renderChat(props: ChatProps) {
       return;
     }
 
-    // Send on Enter (without shift)
+    // Ctrl+Enter → steer (inject into running agent)
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      if (e.isComposing || e.keyCode === 229) {
+        return;
+      }
+      if (!props.connected) {
+        return;
+      }
+      e.preventDefault();
+      if (canCompose) {
+        void sendFromComposer("steer");
+      }
+      return;
+    }
+
+    // Enter → queue (default: never steer via plain Enter)
     if (e.key === "Enter" && !e.shiftKey) {
       if (e.isComposing || e.keyCode === 229) {
         return;
@@ -1308,7 +1325,7 @@ export function renderChat(props: ChatProps) {
       }
       e.preventDefault();
       if (canCompose) {
-        void sendFromComposer();
+        void sendFromComposer("queue");
       }
     }
   };
@@ -1399,14 +1416,43 @@ export function renderChat(props: ChatProps) {
                       <div class="chat-queue__text">
                         ${item.text || formatQueuedAttachmentText(item.attachments)}
                       </div>
-                      <button
-                        class="btn chat-queue__remove"
-                        type="button"
-                        aria-label="Remove queued message"
-                        @click=${() => props.onQueueRemove(item.id)}
-                      >
-                        ${icons.x}
-                      </button>
+                      <div class="chat-queue__actions">
+                        ${props.onQueuePromote
+                          ? html`
+                              <button
+                                class="btn btn--xs chat-queue__promote"
+                                type="button"
+                                title="Send now as steer (skip queue)"
+                                aria-label="Promote to steer"
+                                @click=${() => props.onQueuePromote!(item.id)}
+                              >
+                                ${icons.send}
+                              </button>
+                            `
+                          : nothing}
+                        ${props.onQueueEdit
+                          ? html`
+                              <button
+                                class="btn btn--xs chat-queue__edit"
+                                type="button"
+                                title="Edit message"
+                                aria-label="Edit queued message"
+                                @click=${() => props.onQueueEdit!(item.id)}
+                              >
+                                ${icons.edit}
+                              </button>
+                            `
+                          : nothing}
+                        <button
+                          class="btn btn--xs chat-queue__remove"
+                          type="button"
+                          title="Cancel"
+                          aria-label="Remove queued message"
+                          @click=${() => props.onQueueRemove(item.id)}
+                        >
+                          ${icons.x}
+                        </button>
+                      </div>
                     </div>
                   `,
                 )}
@@ -1541,7 +1587,10 @@ export function renderChat(props: ChatProps) {
             onExport: () => exportMarkdown(props),
             onNewSession: props.onNewSession,
             onSend: () => {
-              void sendFromComposer();
+              void sendFromComposer("queue");
+            },
+            onSendSteer: () => {
+              void sendFromComposer("steer");
             },
             onStoreDraft: () => undefined,
           })}

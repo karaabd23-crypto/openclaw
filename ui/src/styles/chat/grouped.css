@@ -82,6 +82,12 @@
   pointer-events: auto;
 }
 
+/* Reply button is always visible so it's easy to find */
+.chat-group-reply {
+  opacity: 0.35;
+  pointer-events: auto;
+}
+
 .chat-group-footer button:hover {
   opacity: 1 !important;
   background: var(--bg-hover, rgba(255, 255, 255, 0.08));

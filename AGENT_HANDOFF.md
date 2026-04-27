@@ -150,6 +150,47 @@
   - moved compaction + active-memory to `ollama/qwen2.5:7b`
   - verified a persisted successful `AUDIT-OK` turn on `provider=ollama`, `model=qwen2.5:7b`, `fallbackUsed=false`
 
+## Model and Credential Overhaul (2026-04-27)
+
+### OpenAI API Key Separated
+
+- Old key (`sk-proj-0S-CSoB1...`) was shared with the `ieltscorner` repo — caused billing conflicts.
+- New dedicated openclaw key written to Hetzner auth-profiles:
+  - `openai:default` → new key
+  - `openai-codex:default` → new key
+  - `anthropic:default` and `github-copilot:github` left unchanged.
+- WSL local machine also configured via `models auth login --provider openai --method api-key`.
+- WSL gateway config set to remote mode pointing at `wss://195.201.123.118:19000` with token auth.
+
+### Model Routing Overhauled — Subscription-First
+
+- Discovered GitHub Copilot subscription exposes Claude Sonnet 4.6 and Claude Opus 4.6 at no extra API cost.
+- New routing policy (cost-ordered):
+
+| Task                           | Model                              | Billed to            |
+| ------------------------------ | ---------------------------------- | -------------------- |
+| Telegram / marketing / general | `github-copilot/claude-sonnet-4.6` | Copilot subscription |
+| Complex planning               | `github-copilot/claude-opus-4.6`   | Copilot subscription |
+| Coding / subagents             | `openai-codex/gpt-5.4`             | OpenAI API (new key) |
+| Coding fallback                | `openai-codex/gpt-5.4-mini`        | OpenAI API (new key) |
+| Fast/simple fallback           | `github-copilot/gpt-5-mini`        | Copilot subscription |
+| Emergency fallback             | `anthropic/claude-sonnet-4-6`      | Anthropic API        |
+
+- Changes written to `/root/.openclaw/openclaw.json` on Hetzner:
+  - `agents.defaults.model.primary = github-copilot/claude-sonnet-4.6`
+  - `agents.defaults.model.fallbacks = [github-copilot/gpt-5-mini, anthropic/claude-sonnet-4-6, openai/gpt-5.4]`
+  - `agents.defaults.planningModel = github-copilot/claude-opus-4.6`
+  - `agents.defaults.subagents.model.primary = openai-codex/gpt-5.4`
+  - `agents.defaults.subagents.model.fallbacks = [github-copilot/claude-sonnet-4.6, openai-codex/gpt-5.4-mini]`
+  - `channels.modelByChannel.telegram.232973295 = github-copilot/claude-sonnet-4.6`
+  - `plugins.entries.openai.enabled = true`
+- Model aliases added: `codex` → `openai-codex/gpt-5.4`, `codex-fast` → `openai-codex/gpt-5.4-mini`
+- Gateway reloaded via `kill -HUP` after each change.
+
+### Note on "Claude Code" vs Claude Models
+
+- "Claude Code" is a CLI tool (this agent), not a model name. Claude coding capability comes from `github-copilot/claude-sonnet-4.6` as primary and `openai-codex/gpt-5.4` for code-specific subagent tasks.
+
 ## Verified Current Runtime State (Last Check)
 
 - Host: `195.201.123.118`
@@ -158,23 +199,18 @@
 - State path: `/root/.openclaw`
 - Container: `openclaw-openclaw-gateway-1`
 - Health: `Up ... (healthy)`
-- Default model: `ollama/qwen2.5:7b`
-- Fallbacks: `ollama/llama3.2:3b-local`, `ollama/llama3.2:3b`, `ollama/llama3.2:1b`
+- Default model: `github-copilot/claude-sonnet-4.6`
+- Fallbacks: `github-copilot/gpt-5-mini`, `anthropic/claude-sonnet-4-6`, `openai/gpt-5.4`
+- Planning model: `github-copilot/claude-opus-4.6`
 - Thinking default: `low`
-- Per-model thinking overrides:
-  - `ollama/qwen2.5:7b => off`
-  - `ollama/llama3.2:3b-local => off`
-  - `ollama/llama3.2:3b => off`
 - Sub-agent model policy:
-  - primary `ollama/qwen2.5:7b`
-  - fallbacks `ollama/llama3.2:3b-local`, `ollama/llama3.2:3b`, `ollama/llama3.2:1b`
-  - `maxSpawnDepth=2`, `maxChildrenPerAgent=4`, `runTimeoutSeconds=900`, `maxConcurrent=10`
+  - primary `openai-codex/gpt-5.4`
+  - fallbacks `github-copilot/claude-sonnet-4.6`, `openai-codex/gpt-5.4-mini`
+  - `maxSpawnDepth=2`, `maxChildrenPerAgent=4`, `runTimeoutSeconds=300`, `maxConcurrent=4`
 - Embedded Pi execution contract: `strict-agentic`
 - Active-memory model: `ollama/qwen2.5:7b`
-- Compaction model: `ollama/qwen2.5:7b`
-- Telegram session pins verified on local model:
-  - `agent:main:telegram:direct:232973295 -> ollama/qwen2.5:7b`
-  - `agent:main:telegram:slash:232973295 -> ollama/qwen2.5:7b`
+- Compaction model: `ollama/qwen2.5:7b` (kept on Ollama — cheap, fine for summarizing)
+- Telegram session: `232973295 -> github-copilot/claude-sonnet-4.6`
 - Main session override state:
   - `agent:main:main` Copilot override cleared
   - `task-router` disabled
@@ -188,9 +224,11 @@
   - `/usr/bin/ffmpeg`
   - `/usr/bin/jq`
   - `/usr/bin/rg`
-- Auth profiles:
-  - `ollama:manual` (marker)
-  - `openai:default` (API key profile in auth store)
+- Auth profiles (Hetzner `/root/.openclaw/agents/main/agent/auth-profiles.json`):
+  - `openai:default` (new dedicated openclaw API key — separated from ieltscorner)
+  - `openai-codex:default` (same new key)
+  - `anthropic:default` (existing Anthropic API key)
+  - `github-copilot:github` (Copilot OAuth token)
 - `.env` values:
   - `OPENCLAW_GATEWAY_BIND=lan`
   - `OPENCLAW_GATEWAY_PORT=127.0.0.1:28789`
@@ -324,12 +362,13 @@
 
 - User priority: strong intelligence + proactivity, with strict spend control.
 - Budget posture target: about `$25/month` (provider-side hard cap).
-- Runtime default now routes local-first:
-  - primary `ollama/qwen2.5:7b`
-  - fallbacks `ollama/llama3.2:3b`, `openai/gpt-5.4-mini`, `openai/gpt-5.4`
-- Sub-agent escalation route:
-  - primary `openai/gpt-5.4-mini`, fallback `openai/gpt-5.4`
-- Telegram direct and slash sessions are pinned back to local model path after cleanup.
+- Runtime now routes subscription-first:
+  - primary `github-copilot/claude-sonnet-4.6` (Copilot subscription — no per-token cost)
+  - planning `github-copilot/claude-opus-4.6` (Copilot subscription)
+  - coding subagents `openai-codex/gpt-5.4` (OpenAI API — new dedicated key)
+  - compaction/active-memory `ollama/qwen2.5:7b` (local — free)
+  - Anthropic API only as emergency fallback
+- OpenAI key is now dedicated to openclaw only — ieltscorner uses a separate key.
 - Future agents should preserve this spend-control posture unless user explicitly changes policy.
 
 ## IELTS Corner Handoff (Business Continuity)

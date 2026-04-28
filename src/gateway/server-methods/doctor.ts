@@ -12,6 +12,7 @@ import {
   resolveMemoryRemDreamingConfig,
 } from "../../memory-host-sdk/dreaming.js";
 import { readMemoryHostEvents } from "../../memory-host-sdk/events.js";
+import { loadConfig } from "../../config/io.js";
 import { getActiveMemorySearchManager } from "../../plugins/memory-runtime.js";
 import { formatError } from "../server-utils.js";
 import {

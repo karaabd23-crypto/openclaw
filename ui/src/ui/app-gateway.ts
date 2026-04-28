@@ -31,6 +31,10 @@ import {
   type ChatState,
 } from "./controllers/chat.ts";
 import { loadDevices, type DevicesState } from "./controllers/devices.ts";
+import {
+  loadDreamingBriefing,
+  type DreamingBriefingState,
+} from "./controllers/dreaming-briefing.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import {
   addExecApproval,
@@ -42,6 +46,7 @@ import {
 } from "./controllers/exec-approval.ts";
 import { loadHealthState, type HealthState } from "./controllers/health.ts";
 import { loadNodes, type NodesState } from "./controllers/nodes.ts";
+import { loadProjects, type ProjectsState } from "./controllers/projects.ts";
 import { loadSessions, subscribeSessions, type SessionsState } from "./controllers/sessions.ts";
 import {
   resolveGatewayErrorDetailCode,
@@ -96,6 +101,10 @@ type GatewayHost = {
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalError: string | null;
   updateAvailable: UpdateAvailable | null;
+  dreamingBriefing: { phase: string; timestamp: string } | null;
+  projectsLoading: boolean;
+  projectsList: unknown[];
+  projectsError: string | null;
 };
 
 type GatewayHostWithDeferredSessionMessageReload = GatewayHost & {
@@ -313,6 +322,8 @@ export function connectGateway(host: GatewayHost, options?: ConnectGatewayOption
       void loadHealthState(host as unknown as HealthState);
       void loadNodes(host as unknown as NodesState, { quiet: true });
       void loadDevices(host as unknown as DevicesState, { quiet: true });
+      void loadDreamingBriefing(host as unknown as DreamingBriefingState);
+      void loadProjects(host as unknown as ProjectsState);
       void refreshActiveTab(host as unknown as Parameters<typeof refreshActiveTab>[0]);
     },
     onClose: ({ code, reason, error }) => {

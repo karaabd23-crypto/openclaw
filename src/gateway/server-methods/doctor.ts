@@ -12,6 +12,7 @@ import {
   resolveMemoryDreamingWorkspaces,
   resolveMemoryRemDreamingConfig,
 } from "../../memory-host-sdk/dreaming.js";
+import { readMemoryHostEvents } from "../../memory-host-sdk/events.js";
 import { getActiveMemorySearchManager } from "../../plugins/memory-runtime.js";
 import { formatError } from "../server-utils.js";
 import {
@@ -1004,5 +1005,16 @@ export const doctorHandlers: GatewayRequestHandlers = {
       keptEntries: dedupe.kept,
     };
     respond(true, payload, undefined);
+  },
+  "memory.events.recent": async ({ params, respond }) => {
+    const cfg = loadConfig();
+    const agentId = resolveDefaultAgentId(cfg);
+    const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+    const limit =
+      params && typeof params === "object" && typeof params.limit === "number"
+        ? Math.max(1, Math.min(100, Math.floor(params.limit)))
+        : 20;
+    const events = await readMemoryHostEvents({ workspaceDir, limit }).catch(() => []);
+    respond(true, { events }, undefined);
   },
 };

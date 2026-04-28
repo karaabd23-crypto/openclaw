@@ -30,6 +30,7 @@ import { createSessionsListTool } from "./tools/sessions-list-tool.js";
 import { createSessionsSendTool } from "./tools/sessions-send-tool.js";
 import { createSessionsSpawnTool } from "./tools/sessions-spawn-tool.js";
 import { createSessionsYieldTool } from "./tools/sessions-yield-tool.js";
+import { createSkillTool } from "./tools/skill-tool.js";
 import { createSubagentsTool } from "./tools/subagents-tool.js";
 import { createTtsTool } from "./tools/tts-tool.js";
 import { createUpdatePlanTool } from "./tools/update-plan-tool.js";
@@ -241,6 +242,9 @@ export function createOpenClawTools(
     ...collectPresentOpenClawTools([imageGenerateTool, musicGenerateTool, videoGenerateTool]),
     createGatewayTool({
       agentSessionKey: options?.agentSessionKey,
+      config: options?.config,
+    }),
+    createSkillTool({
       config: options?.config,
     }),
     createAgentsListTool({

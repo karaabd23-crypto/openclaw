@@ -175,6 +175,22 @@ export async function applyConfig(state: ConfigState) {
   });
 }
 
+const UPDATE_SKIP_REASONS: Record<string, string> = {
+  dirty: "Update skipped: the working tree has uncommitted changes. Commit or stash them first.",
+  "no-upstream":
+    "Update skipped: could not fetch from the remote. Check your network or remote configuration.",
+  "no-upstream-sha": "Update skipped: could not resolve the upstream SHA after fetching.",
+  "not-git-install":
+    "Update skipped: this install is not a git checkout and cannot be updated this way.",
+  "not-openclaw-root": "Update skipped: could not locate the openclaw package root.",
+  "no-target-sha": "Update skipped: no target SHA found for the requested channel.",
+  "preflight-no-candidates": "Update skipped: no valid candidate commits found during preflight.",
+  "preflight-no-good-commit":
+    "Update skipped: no passing commit found during preflight validation.",
+  "preflight-revlist-failed": "Update skipped: git rev-list failed during preflight.",
+  "preflight-base-missing": "Update skipped: preflight base commit is missing.",
+};
+
 export async function runUpdate(state: ConfigState) {
   if (!state.client || !state.connected) {
     return;
@@ -188,11 +204,16 @@ export async function runUpdate(state: ConfigState) {
     }>("update.run", {
       sessionKey: state.applySessionKey,
     });
-    if (res && res.ok === false) {
-      const status = res.result?.status ?? "error";
-      const reason = res.result?.reason ?? "Update failed.";
-      state.lastError = `Update ${status}: ${reason}`;
+    const status = res?.result?.status;
+    const reason = res?.result?.reason ?? "";
+    if (status === "error") {
+      state.lastError = `Update failed${reason ? `: ${reason}` : "."}`;
+    } else if (status === "skipped") {
+      state.lastError =
+        UPDATE_SKIP_REASONS[reason] ??
+        `Update skipped${reason ? `: ${reason}` : ". No changes were applied."}`;
     }
+    // status === "ok" means the update succeeded; gateway will restart automatically
   } catch (err) {
     state.lastError = String(err);
   } finally {

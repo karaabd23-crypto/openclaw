@@ -109,6 +109,16 @@ function enqueueChatMessage(
   if (!trimmed && !hasAttachments) {
     return;
   }
+  // Don't queue the same plain-text message twice — guards against reconnect
+  // double-send when the user retries a message that was already enqueued.
+  if (
+    trimmed &&
+    !hasAttachments &&
+    !localCommand &&
+    host.chatQueue.some((item) => !item.pendingRunId && item.text === trimmed)
+  ) {
+    return;
+  }
   host.chatQueue = [
     ...host.chatQueue,
     {

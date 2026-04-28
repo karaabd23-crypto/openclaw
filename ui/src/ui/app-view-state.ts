@@ -5,6 +5,7 @@ import type { CronModelSuggestionsState, CronState } from "./controllers/cron.ts
 import type { DevicePairingList } from "./controllers/devices.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
+import type { Project } from "./controllers/projects.ts";
 import type {
   ClawHubSearchResult,
   ClawHubSkillDetail,
@@ -359,6 +360,15 @@ export type AppViewState = {
     logsMaxBytes: number;
     logsAtBottom: boolean;
     updateAvailable: import("./types.js").UpdateAvailable | null;
+    dreamingBriefing: { phase: string; timestamp: string } | null;
+    projectsLoading: boolean;
+    projectsList: Project[];
+    projectsError: string | null;
+    projectsCreating: boolean;
+    projectsCreateError: string | null;
+    projectsDraftName: string;
+    projectsDraftDescription: string;
+    projectsCreateOpen: boolean;
     attentionItems: AttentionItem[];
     paletteOpen: boolean;
     paletteQuery: string;
@@ -429,6 +439,11 @@ export type AppViewState = {
     removeQueuedMessage: (id: string) => void;
     editQueuedMessage: (id: string) => void;
     steerQueuedMessage: (id: string) => void;
+    dismissDreamingBriefing: () => void;
+    handleLoadProjects: () => Promise<void>;
+    handleCreateProject: (name: string, description?: string) => Promise<void>;
+    handleDeleteProject: (id: string) => Promise<void>;
+    handleResumeProject: (project: Project) => void;
     handleChatScroll: (event: Event) => void;
     resetToolStream: () => void;
     resetChatScroll: () => void;

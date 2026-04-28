@@ -149,6 +149,7 @@ import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
 import { renderLoginGate } from "./views/login-gate.ts";
 import { renderOverview } from "./views/overview.ts";
+import { renderProjects } from "./views/projects.ts";
 
 // Lazy-loaded view modules – deferred so the initial bundle stays small.
 // Each loader resolves once; subsequent calls return the cached module.
@@ -2197,6 +2198,29 @@ export function renderApp(state: AppViewState) {
               }),
             )
           : nothing}
+        ${state.tab === "chat" && state.dreamingBriefing
+          ? html`<div class="dreaming-briefing-banner callout" role="status">
+              <span class="dreaming-briefing-banner__text">
+                New insights from ${state.dreamingBriefing.phase} dreaming are available.
+              </span>
+              <button
+                class="btn btn--xs"
+                @click=${() => {
+                  state.setTab("dreams" as import("./navigation.ts").Tab);
+                  state.dismissDreamingBriefing();
+                }}
+              >
+                View in Memory
+              </button>
+              <button
+                class="btn btn--xs btn--ghost"
+                @click=${() => state.dismissDreamingBriefing()}
+                aria-label="Dismiss dreaming briefing"
+              >
+                Dismiss
+              </button>
+            </div>`
+          : nothing}
         ${state.tab === "chat"
           ? renderChat({
               sessionKey: state.sessionKey,
@@ -2419,6 +2443,48 @@ export function renderApp(state: AppViewState) {
               onResetGroundedShortTerm: () => resetGroundedShortTerm(state),
               onRepairDreamingArtifacts: () => repairDreamingArtifacts(state),
               onRequestUpdate: requestHostUpdate,
+            })
+          : nothing}
+        ${state.tab === "projects"
+          ? renderProjects({
+              loading: state.projectsLoading,
+              error: state.projectsError,
+              projects: state.projectsList,
+              creating: state.projectsCreating,
+              createError: state.projectsCreateError,
+              draftName: state.projectsDraftName,
+              draftDescription: state.projectsDraftDescription,
+              createOpen: state.projectsCreateOpen,
+              onRefresh: () => state.handleLoadProjects(),
+              onOpenCreate: () => {
+                state.projectsCreateOpen = true;
+                state.projectsDraftName = "";
+                state.projectsDraftDescription = "";
+                state.projectsCreateError = null;
+              },
+              onCloseCreate: () => {
+                state.projectsCreateOpen = false;
+              },
+              onDraftNameChange: (v) => (state.projectsDraftName = v),
+              onDraftDescriptionChange: (v) => (state.projectsDraftDescription = v),
+              onCreate: () => {
+                void state
+                  .handleCreateProject(
+                    state.projectsDraftName,
+                    state.projectsDraftDescription || undefined,
+                  )
+                  .then(() => {
+                    if (!state.projectsCreateError) {
+                      state.projectsCreateOpen = false;
+                      state.projectsDraftName = "";
+                      state.projectsDraftDescription = "";
+                    }
+                  });
+              },
+              onResume: (project) => state.handleResumeProject(project),
+              onDelete: (project) => {
+                void state.handleDeleteProject(project.id);
+              },
             })
           : nothing}
       </main>

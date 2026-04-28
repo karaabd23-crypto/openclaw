@@ -1,0 +1,118 @@
+.projects-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  max-width: 800px;
+}
+
+.projects-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.projects-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--border-radius, 8px);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.04));
+}
+
+.projects-create-form__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.projects-create-form__label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.5));
+  font-weight: 500;
+}
+
+.projects-create-form__error {
+  font-size: 0.85rem;
+}
+
+.projects-create-form__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.projects-error {
+  font-size: 0.85rem;
+}
+
+.projects-loading,
+.projects-empty {
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.5));
+  font-size: 0.9rem;
+}
+
+.projects-empty p {
+  margin: 0;
+}
+
+.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.projects-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--border-radius, 8px);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.04));
+  transition: background 0.15s;
+}
+
+.projects-card:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.07));
+}
+
+.projects-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.projects-card__name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projects-card__desc {
+  font-size: 0.85rem;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.6));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projects-card__meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.4));
+}
+
+.projects-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}

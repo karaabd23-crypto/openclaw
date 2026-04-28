@@ -4618,3 +4618,21 @@ details[open] > .ov-expandable-toggle::after {
     gap: 4px;
   }
 }
+
+/* Dreaming briefing banner */
+.dreaming-briefing-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+.dreaming-briefing-banner__text {
+  flex: 1;
+  font-size: 13px;
+}

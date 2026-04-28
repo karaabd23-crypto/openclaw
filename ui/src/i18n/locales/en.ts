@@ -164,6 +164,7 @@ export const en: TranslationMap = {
     debug: "Debug",
     logs: "Logs",
     dreams: "Dreaming",
+    projects: "Projects",
   },
   subtitles: {
     agents: "Workspaces, tools, identities.",
@@ -185,6 +186,7 @@ export const en: TranslationMap = {
     debug: "Snapshots, events, RPC.",
     logs: "Live gateway logs.",
     dreams: "Memory dreaming, consolidation, and reflection.",
+    projects: "Named contexts you can return to.",
   },
   overview: {
     access: {

@@ -64,6 +64,7 @@ import {
 } from "./controllers/agents.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
 import type { DevicePairingList } from "./controllers/devices.ts";
+import { dismissDreamingBriefing } from "./controllers/dreaming-briefing.ts";
 import type {
   DreamingStatus,
   WikiImportInsights,
@@ -71,6 +72,13 @@ import type {
 } from "./controllers/dreaming.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
+import {
+  createProject,
+  deleteProject,
+  loadProjects,
+  type Project,
+  type ProjectsState,
+} from "./controllers/projects.ts";
 import type {
   ClawHubSearchResult,
   ClawHubSkillDetail,
@@ -440,6 +448,15 @@ export class OpenClawApp extends LitElement {
   @state() cronBusy = false;
 
   @state() updateAvailable: import("./types.js").UpdateAvailable | null = null;
+  @state() dreamingBriefing: { phase: string; timestamp: string } | null = null;
+  @state() projectsLoading = false;
+  @state() projectsList: Project[] = [];
+  @state() projectsError: string | null = null;
+  @state() projectsCreating = false;
+  @state() projectsCreateError: string | null = null;
+  @state() projectsDraftName = "";
+  @state() projectsDraftDescription = "";
+  @state() projectsCreateOpen = false;
 
   // Overview dashboard state
   @state() attentionItems: import("./types.js").AttentionItem[] = [];
@@ -701,6 +718,29 @@ export class OpenClawApp extends LitElement {
       this as unknown as Parameters<typeof steerQueuedMessageInternal>[0],
       id,
     );
+  }
+
+  dismissDreamingBriefing() {
+    dismissDreamingBriefing(this as unknown as Parameters<typeof dismissDreamingBriefing>[0]);
+  }
+
+  async handleLoadProjects() {
+    await loadProjects(this as unknown as ProjectsState);
+  }
+
+  async handleCreateProject(name: string, description?: string) {
+    await createProject(this as unknown as ProjectsState, name, description);
+  }
+
+  async handleDeleteProject(id: string) {
+    await deleteProject(this as unknown as ProjectsState, id);
+  }
+
+  handleResumeProject(project: Project) {
+    if (project.sessionKey) {
+      (this as unknown as { sessionKey: string }).sessionKey = project.sessionKey;
+    }
+    this.setTab("chat");
   }
 
   async handleSendChat(

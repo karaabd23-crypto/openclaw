@@ -199,18 +199,20 @@
 - State path: `/root/.openclaw`
 - Container: `openclaw-openclaw-gateway-1`
 - Health: `Up ... (healthy)`
-- Default model: `github-copilot/claude-sonnet-4.6`
-- Fallbacks: `github-copilot/gpt-5-mini`, `anthropic/claude-sonnet-4-6`, `openai/gpt-5.4`
-- Planning model: `github-copilot/claude-opus-4.6`
-- Thinking default: `low`
-- Sub-agent model policy:
+- Default model: `github-copilot/claude-sonnet-4.6` (Copilot subscription, general purpose — no per-token cost)
+- Fallbacks: `github-copilot/gpt-4.1` → `github-copilot/gpt-4.1-mini` → `openai/gpt-5.4` → `anthropic/claude-sonnet-4-6`
+- Planning model: `github-copilot/claude-opus-4.6` — PENDING: requires container rebuild with planningModel support (commit c5c3d38ffc not yet deployed)
+- Thinking default: `off` (changed from `low` — reasoning items from one provider cannot be replayed with another, causing cascade failures; all providers were failing due to stale `rs_` items in session JSONLs)
+- Sub-agent model policy (coding):
   - primary `openai-codex/gpt-5.4`
-  - fallbacks `github-copilot/claude-sonnet-4.6`, `openai-codex/gpt-5.4-mini`
+  - fallbacks `claude-cli/claude-sonnet-4-6`, `github-copilot/claude-sonnet-4.6`, `openai-codex/gpt-5.4-mini`
   - `maxSpawnDepth=2`, `maxChildrenPerAgent=4`, `runTimeoutSeconds=300`, `maxConcurrent=4`
-- Embedded Pi execution contract: `strict-agentic`
-- Active-memory model: `ollama/qwen2.5:7b`
-- Compaction model: `ollama/qwen2.5:7b` (kept on Ollama — cheap, fine for summarizing)
-- Telegram session: `232973295 -> github-copilot/claude-sonnet-4.6`
+- Compaction model: `github-copilot/gpt-4.1-mini` (fast, free via subscription)
+- Active-memory model: `github-copilot/gpt-4.1-mini`
+- No per-channel model overrides — all channels use global default (Copilot Sonnet)
+- Anthropic API rate-limited until 2026-05-01; kept as last-resort fallback only
+- NOTE: Container still runs image `2026.4.24`. Rebuild from main branch to deploy: projects backend, skill tool, dreaming briefings, planningModel support: `VPS_IP=195.201.123.118 SKIP_STATE_UPLOAD=1 bash scripts/openclaw-hetzner-deploy.sh`
+- Sessions repaired 2026-04-27: cleared all authProfileOverrides, reset failed statuses, removed stale thinking blocks from Telegram + main session JSONLs, cleared auth cooldowns
 - Main session override state:
   - `agent:main:main` Copilot override cleared
   - `task-router` disabled

@@ -211,7 +211,8 @@
 - Active-memory model: `github-copilot/gpt-4.1-mini`
 - No per-channel model overrides — all channels use global default (Copilot Sonnet)
 - Anthropic API rate-limited until 2026-05-01; kept as last-resort fallback only
-- NOTE: Container still runs image `2026.4.24`. Rebuild from main branch to deploy: projects backend, skill tool, dreaming briefings, planningModel support: `VPS_IP=195.201.123.118 SKIP_STATE_UPLOAD=1 bash scripts/openclaw-hetzner-deploy.sh`
+- Container rebuilt 2026-04-28: new image includes projects backend, skill tool, dreaming briefings, planningModel support. Built at 04:32 UTC.
+- planningModel: `github-copilot/claude-opus-4.6` — ACTIVE (config reload applied after rebuild)
 - Sessions repaired 2026-04-27: cleared all authProfileOverrides, reset failed statuses, removed stale thinking blocks from Telegram + main session JSONLs, cleared auth cooldowns
 - Main session override state:
   - `agent:main:main` Copilot override cleared

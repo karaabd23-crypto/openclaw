@@ -917,7 +917,6 @@ export function renderChat(props: ChatProps) {
     avatar: resolveAssistantDisplayAvatar(props),
   };
   const pinned = getPinnedMessages(props.sessionKey);
-  const deleted = getDeletedMessages(props.sessionKey);
   const hasAttachments = (props.attachments?.length ?? 0) > 0;
   const tokens = tokenEstimate(props.draft);
 

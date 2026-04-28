@@ -17,11 +17,13 @@ import type {
 } from "../types/chat-types.ts";
 import { resolveLocalUserName } from "../user-identity.ts";
 export { resolveAssistantTextAvatar } from "../views/agents-utils.ts";
+import { agentLogoUrl } from "../views/agents-utils.ts";
 import { renderChatAvatar } from "./chat-avatar.ts";
 import { renderCopyAsMarkdownButton } from "./copy-as-markdown.ts";
-import { extractThinkingCached, formatReasoningMarkdown } from "./message-extract.ts";
+import { extractText, extractThinkingCached, formatReasoningMarkdown } from "./message-extract.ts";
 import { isToolResultMessage, normalizeMessage } from "./message-normalizer.ts";
 import { normalizeRoleForGrouping } from "./role-normalizer.ts";
+import { isTtsSupported, isTtsSpeaking, speakText, stopTts } from "./speech.ts";
 import {
   extractToolCards,
   renderExpandedToolCardContent,
@@ -119,6 +121,13 @@ const managedImageBlobUrlCache = new Map<string, Promise<string | null>>();
 const managedImageBlobUrlResolvedCache = new Map<string, string>();
 const managedImageBlobUrlMissCache = new Map<string, number>();
 const MANAGED_IMAGE_BLOB_URL_MISS_RETRY_MS = 5_000;
+
+function extractGroupText(group: MessageGroup): string | null {
+  const texts = group.messages
+    .map((item) => extractText(item.message))
+    .filter((t): t is string => t != null && t.length > 0);
+  return texts.length > 0 ? texts.join("\n\n") : null;
+}
 
 function appendImageBlock(images: ImageBlock[], block: ImageBlock) {
   if (!images.some((entry) => entry.url === block.url && entry.alt === block.alt)) {

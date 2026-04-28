@@ -5,6 +5,9 @@ on:
     - cron: "23 4 * * *"
   workflow_dispatch:
 
+# Skip scheduled runs in forks - they require secrets
+# Manual dispatch is still allowed for testing
+
 permissions:
   contents: read
   packages: write
@@ -19,6 +22,8 @@ env:
 
 jobs:
   live_and_openwebui_checks:
+    # Skip scheduled runs in forks - live/E2E tests require production secrets
+    if: github.event_name == 'workflow_dispatch' || github.repository == 'openclaw/openclaw'
     permissions:
       contents: read
       packages: write

@@ -2,7 +2,7 @@ name: OpenClaw Scheduled Live And E2E Checks
 
 on:
   schedule:
-    - cron: "23 4 * * *"
+    - cron: "23 4 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -26,10 +26,12 @@ jobs:
     uses: ./.github/workflows/openclaw-live-and-e2e-checks-reusable.yml
     with:
       ref: ${{ github.sha }}
-      include_repo_e2e: true
-      include_release_path_suites: true
-      include_openwebui: true
+      include_repo_e2e: ${{ github.event_name == 'workflow_dispatch' }}
+      include_release_path_suites: ${{ github.event_name == 'workflow_dispatch' }}
+      include_openwebui: ${{ github.event_name == 'workflow_dispatch' }}
       include_live_suites: true
+      live_models_only: ${{ github.event_name != 'workflow_dispatch' }}
+      live_model_providers: ${{ github.event_name == 'workflow_dispatch' && '' || 'openai,anthropic,google' }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}

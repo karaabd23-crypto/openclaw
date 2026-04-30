@@ -1,5 +1,4 @@
 import { Type } from "typebox";
-import { loadConfig } from "../../config/config.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import { resolveDefaultAgentId, resolveAgentWorkspaceDir } from "../agent-scope-config.js";
 import { stringEnum } from "../schema/typebox.js";
@@ -30,7 +29,7 @@ export function createSkillTool(opts?: { config?: OpenClawConfig }): AnyAgentToo
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
       const action = readStringParam(params, "action", { required: true });
-      const cfg = opts?.config ?? loadConfig();
+      const cfg = opts?.config;
 
       if (action === "search") {
         const query = readStringParam(params, "query");
@@ -59,6 +58,9 @@ export function createSkillTool(opts?: { config?: OpenClawConfig }): AnyAgentToo
         const slug = readStringParam(params, "slug", { required: true, label: "slug" });
         const version = readStringParam(params, "version") ?? undefined;
         const force = Boolean(params.force);
+        if (!cfg) {
+          throw new Error("Skill tool requires config in this runtime");
+        }
         const agentId = resolveDefaultAgentId(cfg);
         const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
         const result = await installSkillFromClawHub({

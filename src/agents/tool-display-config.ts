@@ -337,6 +337,20 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Agents",
       detailKeys: [],
     },
+    skill: {
+      emoji: "🧩",
+      title: "Skill",
+      actions: {
+        search: {
+          label: "search",
+          detailKeys: ["query", "limit"],
+        },
+        install: {
+          label: "install",
+          detailKeys: ["slug", "version", "force"],
+        },
+      },
+    },
     memory_search: {
       emoji: "🧠",
       title: "Memory Search",

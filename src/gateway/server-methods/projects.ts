@@ -1,5 +1,4 @@
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../../agents/agent-scope.js";
-import { loadConfig } from "../../config/config.js";
 import {
   generateProjectId,
   readProjectsFile,
@@ -9,22 +8,23 @@ import {
 import { ErrorCodes, errorShape } from "../protocol/index.js";
 import type { GatewayRequestHandlers } from "./types.js";
 
-function resolveWorkspace(): string {
-  const cfg = loadConfig();
+function resolveWorkspaceFromConfig(
+  cfg: import("../../config/types.openclaw.js").OpenClawConfig,
+): string {
   const agentId = resolveDefaultAgentId(cfg);
   return resolveAgentWorkspaceDir(cfg, agentId);
 }
 
 export const projectsMethods: GatewayRequestHandlers = {
-  "projects.list": async ({ respond }) => {
-    const workspaceDir = resolveWorkspace();
+  "projects.list": async ({ respond, context }) => {
+    const workspaceDir = resolveWorkspaceFromConfig(context.getRuntimeConfig());
     const data = await readProjectsFile(workspaceDir);
     respond(true, { projects: data.projects }, undefined);
   },
 
-  "projects.set": async ({ params, respond }) => {
+  "projects.set": async ({ params, respond, context }) => {
     const p = params;
-    const workspaceDir = resolveWorkspace();
+    const workspaceDir = resolveWorkspaceFromConfig(context.getRuntimeConfig());
     const data = await readProjectsFile(workspaceDir);
     const id = typeof p.id === "string" && p.id.trim() ? p.id.trim() : null;
     const name = typeof p.name === "string" ? p.name.trim() : "";
@@ -75,7 +75,7 @@ export const projectsMethods: GatewayRequestHandlers = {
     respond(true, { project: newProject }, undefined);
   },
 
-  "projects.delete": async ({ params, respond }) => {
+  "projects.delete": async ({ params, respond, context }) => {
     const p = params;
     const id = typeof p.id === "string" ? p.id.trim() : "";
     if (!id) {
@@ -86,7 +86,7 @@ export const projectsMethods: GatewayRequestHandlers = {
       );
       return;
     }
-    const workspaceDir = resolveWorkspace();
+    const workspaceDir = resolveWorkspaceFromConfig(context.getRuntimeConfig());
     const data = await readProjectsFile(workspaceDir);
     const before = data.projects.length;
     data.projects = data.projects.filter((proj) => proj.id !== id);

@@ -13,6 +13,12 @@ import {
   normalizeOptionalLowercaseString,
   normalizeOptionalString,
 } from "../shared/string-coerce.js";
+import {
+  consumeControlApprovalForInvoke,
+  createControlApprovalRequest,
+  createControlTask,
+} from "../tasks/control-layer.store.sqlite.js";
+import { parseBooleanValue } from "../utils/boolean.js";
 import { normalizeMessageChannel } from "../utils/message-channel.js";
 import type { AuthRateLimiter } from "./auth-rate-limit.js";
 import type { ResolvedGatewayAuth } from "./auth.js";
@@ -183,6 +189,9 @@ export async function handleToolsInvokeHttpRequest(
     sendInvalidRequest(res, "tools.invoke requires body.tool");
     return true;
   }
+  const requireControlApproval =
+    parseBooleanValue(process.env.OPENCLAW_TOOLS_INVOKE_REQUIRE_CONTROL_APPROVAL) ?? false;
+  const providedApprovalId = normalizeOptionalString(getHeader(req, "x-openclaw-approval-id"));
 
   if (process.env.VITEST && MEMORY_TOOL_NAMES.has(toolName)) {
     const reasons = resolveMemoryToolDisableReasons(cfg);
@@ -212,6 +221,57 @@ export async function handleToolsInvokeHttpRequest(
   const rawSessionKey = resolveSessionKeyFromBody(body);
   const sessionKey =
     !rawSessionKey || rawSessionKey === "main" ? resolveMainSessionKey(cfg) : rawSessionKey;
+
+  if (requireControlApproval) {
+    if (!providedApprovalId) {
+      const approvalTask = await createControlTask({
+        taskType: "tools.invoke",
+        prompt: `Approval required before invoking tool \"${toolName}\".`,
+        modelRef: `gateway/${toolName}`,
+        maxSteps: 1,
+        approvalRequired: true,
+      });
+      const approval = await createControlApprovalRequest({
+        taskId: approvalTask.taskId,
+        actionType: "tools.invoke",
+        actionTarget: toolName,
+        payload: {
+          tool: toolName,
+          args,
+          sessionKey,
+        },
+      });
+      sendJson(res, 409, {
+        ok: false,
+        error: {
+          type: "approval_required",
+          message:
+            "tools.invoke execution paused pending explicit approval. Approve the request, then retry with x-openclaw-approval-id.",
+        },
+        approval: {
+          approvalId: approval.approvalId,
+          taskId: approval.taskId,
+          status: approval.status,
+        },
+      });
+      return true;
+    }
+
+    const approval = await consumeControlApprovalForInvoke({
+      approvalId: providedApprovalId,
+      toolName,
+    });
+    if (!approval.ok) {
+      sendJson(res, 403, {
+        ok: false,
+        error: {
+          type: "approval_required",
+          message: `tools.invoke denied: ${approval.reason}`,
+        },
+      });
+      return true;
+    }
+  }
 
   // Resolve message channel/account hints (optional headers) for policy inheritance.
   const messageChannel = normalizeMessageChannel(

@@ -24,8 +24,11 @@ import { applyVerboseOverride } from "../sessions/level-overrides.js";
 import { applyModelOverrideToSessionEntry } from "../sessions/model-overrides.js";
 import { resolveSendPolicy } from "../sessions/send-policy.js";
 import { normalizeOptionalString } from "../shared/string-coerce.js";
+import { checkControlBudgetForModel } from "../tasks/control-layer.store.sqlite.js";
 import { sanitizeForLog } from "../terminal/ansi.js";
+import { parseBooleanValue } from "../utils/boolean.js";
 import { resolveMessageChannel } from "../utils/message-channel.js";
+import { type ModelCostConfig, resolveModelCostConfig } from "../utils/usage-format.js";
 import { resolveAgentRuntimeConfig } from "./agent-runtime-config.js";
 import {
   listAgentIds,
@@ -97,6 +100,20 @@ let skillsRuntimePromise: Promise<SkillsRuntime> | undefined;
 let skillsFilterRuntimePromise: Promise<SkillsFilterRuntime> | undefined;
 let skillsRefreshStateRuntimePromise: Promise<SkillsRefreshStateRuntime> | undefined;
 let skillsRemoteRuntimePromise: Promise<SkillsRemoteRuntime> | undefined;
+
+function isModelPaid(cost: ModelCostConfig | undefined): boolean {
+  if (!cost) {
+    // Treat unknown pricing as paid so hard limits fail closed.
+    return true;
+  }
+  if (cost.input > 0 || cost.output > 0 || cost.cacheRead > 0 || cost.cacheWrite > 0) {
+    return true;
+  }
+  const tiered = cost.tieredPricing ?? [];
+  return tiered.some(
+    (tier) => tier.input > 0 || tier.output > 0 || tier.cacheRead > 0 || tier.cacheWrite > 0,
+  );
+}
 
 function loadAttemptExecutionRuntime(): Promise<AttemptExecutionRuntime> {
   attemptExecutionRuntimePromise ??= import("./command/attempt-execution.runtime.js");
@@ -862,6 +879,47 @@ async function agentCommandInternal(
         }
       }
     }
+
+    const enforceControlBudget =
+      parseBooleanValue(process.env.OPENCLAW_CONTROL_BUDGET_ENFORCE) ?? false;
+    if (enforceControlBudget) {
+      const costConfig = resolveModelCostConfig({
+        provider,
+        model,
+        config: cfg,
+      });
+      const budgetDecision = await checkControlBudgetForModel({
+        provider,
+        model,
+        isPaid: isModelPaid(costConfig),
+        prompt: body,
+        taskId: runId,
+      });
+      if (budgetDecision.downgradeToModelRef) {
+        const downgradedRef = parseModelRef(budgetDecision.downgradeToModelRef, provider);
+        if (!downgradedRef) {
+          throw new Error(
+            `Budget downgrade target is invalid: ${budgetDecision.downgradeToModelRef}`,
+          );
+        }
+        const downgradedKey = modelKey(downgradedRef.provider, downgradedRef.model);
+        if (!allowAnyModel && !allowedModelKeys.has(downgradedKey)) {
+          throw new Error(
+            `Budget downgrade target is not allowed for agent \"${sessionAgentId}\": ${downgradedRef.provider}/${downgradedRef.model}`,
+          );
+        }
+        provider = downgradedRef.provider;
+        model = downgradedRef.model;
+      }
+      if (!budgetDecision.allowed) {
+        throw new Error(
+          budgetDecision.rejectNewTasks
+            ? "Budget exhausted: paid model calls are blocked and new tasks are rejected."
+            : "Budget blocked this paid model call.",
+        );
+      }
+    }
+
     const { resolveSessionTranscriptFile } = await loadTranscriptResolveRuntime();
     let sessionFile: string | undefined;
     if (sessionStore && sessionKey) {

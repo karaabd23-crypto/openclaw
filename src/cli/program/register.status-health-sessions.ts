@@ -5,6 +5,20 @@ import { sessionsCleanupCommand } from "../../commands/sessions-cleanup.js";
 import { sessionsCommand } from "../../commands/sessions.js";
 import { statusCommand } from "../../commands/status.js";
 import {
+  tasksControlApprovalDecideCommand,
+  tasksControlApprovalListCommand,
+  tasksControlApprovalRequestCommand,
+  tasksControlApprovalShowCommand,
+  tasksControlBudgetCheckCommand,
+  tasksControlBudgetSetCommand,
+  tasksControlBudgetShowCommand,
+  tasksControlBudgetSpendCommand,
+  tasksControlCreateCommand,
+  tasksControlListCommand,
+  tasksControlShowCommand,
+  tasksControlStatusCommand,
+} from "../../commands/tasks-control.js";
+import {
   tasksAuditCommand,
   tasksCancelCommand,
   tasksListCommand,
@@ -375,6 +389,273 @@ export function registerStatusHealthSessionsCommands(program: Command) {
         await tasksCancelCommand(
           {
             lookup,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  const tasksControlCmd = tasksCmd
+    .command("control")
+    .description("Minimal control layer (task lifecycle, approvals, budget, and auditability)");
+
+  tasksControlCmd
+    .command("create")
+    .description("Create a minimal control task")
+    .option("--json", "Output JSON", false)
+    .option("--type <name>", "Task type", "general")
+    .option("--prompt <text>", "Prompt text to record")
+    .option("--model <ref>", "Model ref (provider/model)")
+    .option("--estimated-cost <usd>", "Estimated cost in USD")
+    .option("--max-steps <n>", "Maximum allowed steps", "1")
+    .option("--approval-required", "Mark task as requiring approval", false)
+    .action(async (opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlCreateCommand(
+          {
+            json: Boolean(opts.json),
+            type: opts.type as string | undefined,
+            prompt: opts.prompt as string | undefined,
+            model: opts.model as string | undefined,
+            estimatedCost: opts.estimatedCost as string | undefined,
+            maxSteps: opts.maxSteps as string | undefined,
+            approvalRequired: Boolean(opts.approvalRequired),
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlCmd
+    .command("show")
+    .description("Show one control task")
+    .argument("<taskId>", "Control task id")
+    .option("--json", "Output JSON", false)
+    .action(async (taskId, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlShowCommand(
+          {
+            json: Boolean(opts.json),
+            taskId: taskId as string,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlCmd
+    .command("list")
+    .description("List control tasks")
+    .option("--json", "Output JSON", false)
+    .option("--limit <n>", "Maximum rows", "50")
+    .action(async (opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlListCommand(
+          {
+            json: Boolean(opts.json),
+            limit: opts.limit as string | undefined,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlCmd
+    .command("status")
+    .description("Update control task status")
+    .argument("<taskId>", "Control task id")
+    .argument(
+      "<status>",
+      "Status (queued, running, paused, awaiting_approval, approved, blocked, rejected, succeeded, failed, cancelled)",
+    )
+    .option("--json", "Output JSON", false)
+    .option("--outcome <text>", "Outcome note")
+    .action(async (taskId, status, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlStatusCommand(
+          {
+            json: Boolean(opts.json),
+            taskId: taskId as string,
+            status: status as string,
+            outcome: opts.outcome as string | undefined,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  const tasksControlApprovalCmd = tasksControlCmd
+    .command("approval")
+    .description("Manage explicit approval requests");
+
+  tasksControlApprovalCmd
+    .command("request")
+    .description("Generate an approval request and pause task execution")
+    .argument("<taskId>", "Control task id")
+    .argument("<actionType>", "Action type (e.g. tools.invoke, email.send)")
+    .option("--json", "Output JSON", false)
+    .option("--target <value>", "Action target (e.g. tool name)")
+    .option("--payload-json <json>", "JSON object payload")
+    .action(async (taskId, actionType, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlApprovalRequestCommand(
+          {
+            json: Boolean(opts.json),
+            taskId: taskId as string,
+            actionType: actionType as string,
+            actionTarget: opts.target as string | undefined,
+            payloadJson: opts.payloadJson as string | undefined,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlApprovalCmd
+    .command("decide")
+    .description("Approve or reject a pending request")
+    .argument("<approvalId>", "Approval request id")
+    .argument("<decision>", "approve | reject")
+    .option("--json", "Output JSON", false)
+    .option("--actor <name>", "Actor label")
+    .action(async (approvalId, decision, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlApprovalDecideCommand(
+          {
+            json: Boolean(opts.json),
+            approvalId: approvalId as string,
+            decision: decision as "approve" | "reject",
+            actor: opts.actor as string | undefined,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlApprovalCmd
+    .command("show")
+    .description("Show one approval request")
+    .argument("<approvalId>", "Approval request id")
+    .option("--json", "Output JSON", false)
+    .action(async (approvalId, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlApprovalShowCommand(
+          {
+            json: Boolean(opts.json),
+            approvalId: approvalId as string,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlApprovalCmd
+    .command("list")
+    .description("List recent approval requests")
+    .option("--json", "Output JSON", false)
+    .option("--limit <n>", "Maximum rows", "50")
+    .action(async (opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlApprovalListCommand(
+          {
+            json: Boolean(opts.json),
+            limit: opts.limit as string | undefined,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  const tasksControlBudgetCmd = tasksControlCmd
+    .command("budget")
+    .description("Hard budget guard controls for model usage");
+
+  tasksControlBudgetCmd
+    .command("show")
+    .description("Show current budget state")
+    .option("--json", "Output JSON", false)
+    .action(async (opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlBudgetShowCommand(
+          {
+            json: Boolean(opts.json),
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlBudgetCmd
+    .command("set")
+    .description("Set daily/monthly budget limits and cheapest fallback model")
+    .argument("<daily>", "Daily limit in USD")
+    .argument("<monthly>", "Monthly limit in USD")
+    .option("--json", "Output JSON", false)
+    .option(
+      "--cheapest-model <ref>",
+      "Fallback model ref used when paid calls are blocked",
+      "openrouter/qwen/qwen3-30b-a3b:free",
+    )
+    .option("--cheapest-model-paid", "Mark fallback model as paid", false)
+    .action(async (daily, monthly, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlBudgetSetCommand(
+          {
+            json: Boolean(opts.json),
+            daily: daily as string,
+            monthly: monthly as string,
+            cheapestModel: opts.cheapestModel as string,
+            cheapestModelPaid: Boolean(opts.cheapestModelPaid),
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlBudgetCmd
+    .command("check")
+    .description("Check if a model call is allowed under the current budget")
+    .argument("<model>", "Model ref (provider/model or model id)")
+    .option("--json", "Output JSON", false)
+    .option("--paid", "Treat this model as paid", false)
+    .option("--estimated-cost <usd>", "Estimated call cost in USD")
+    .option("--prompt <text>", "Prompt text to record in audit log")
+    .option("--task-id <id>", "Related control task id")
+    .action(async (model, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlBudgetCheckCommand(
+          {
+            json: Boolean(opts.json),
+            model: model as string,
+            paid: Boolean(opts.paid),
+            estimatedCost: opts.estimatedCost as string | undefined,
+            prompt: opts.prompt as string | undefined,
+            taskId: opts.taskId as string | undefined,
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  tasksControlBudgetCmd
+    .command("spend")
+    .description("Record spend so hard limits can block further paid calls")
+    .argument("<cost>", "Cost in USD")
+    .option("--json", "Output JSON", false)
+    .option("--task-id <id>", "Related control task id")
+    .option("--prompt <text>", "Prompt text to record in audit log")
+    .option("--model <ref>", "Model ref (provider/model)")
+    .option("--outcome <text>", "Outcome text")
+    .action(async (cost, opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await tasksControlBudgetSpendCommand(
+          {
+            json: Boolean(opts.json),
+            cost: cost as string,
+            taskId: opts.taskId as string | undefined,
+            prompt: opts.prompt as string | undefined,
+            model: opts.model as string | undefined,
+            outcome: opts.outcome as string | undefined,
           },
           defaultRuntime,
         );

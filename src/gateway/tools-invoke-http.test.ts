@@ -1,5 +1,8 @@
+import { mkdtemp, rm } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import os from "node:os";
+import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { runBeforeToolCallHook as runBeforeToolCallHookType } from "../agents/pi-tools.before-tool-call.js";
 
@@ -201,6 +204,8 @@ vi.mock("../agents/pi-tools.before-tool-call.js", () => ({
 
 const { authorizeHttpGatewayConnect } = await import("./auth.js");
 const { handleToolsInvokeHttpRequest } = await import("./tools-invoke-http.js");
+const { closeControlLayerSqliteStore, decideControlApproval } =
+  await import("../tasks/control-layer.store.sqlite.js");
 
 let pluginHttpHandlers: Array<(req: IncomingMessage, res: ServerResponse) => Promise<boolean>> = [];
 
@@ -249,8 +254,11 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
+  closeControlLayerSqliteStore();
   delete process.env.OPENCLAW_GATEWAY_TOKEN;
   delete process.env.OPENCLAW_GATEWAY_PASSWORD;
+  delete process.env.OPENCLAW_TOOLS_INVOKE_REQUIRE_CONTROL_APPROVAL;
+  delete process.env.OPENCLAW_STATE_DIR;
   pluginHttpHandlers = [];
   cfg = {};
   lastCreateOpenClawToolsContext = undefined;
@@ -854,6 +862,84 @@ describe("POST /tools/invoke", () => {
 
     const body = await expectOkInvokeResponse(res);
     expect(body.result).toEqual({ ok: true, result: "owner-only" });
+  });
+
+  it("requires explicit control approval when tools.invoke approval gate is enabled", async () => {
+    const stateDir = await mkdtemp(path.join(os.tmpdir(), "openclaw-tools-invoke-approval-"));
+    try {
+      process.env.OPENCLAW_STATE_DIR = stateDir;
+      process.env.OPENCLAW_TOOLS_INVOKE_REQUIRE_CONTROL_APPROVAL = "1";
+      allowAgentsListForMain();
+
+      const res = await invokeAgentsListAuthed({ sessionKey: "main" });
+      expect(res.status).toBe(409);
+
+      const body = await res.json();
+      expect(body.ok).toBe(false);
+      expect(body.error?.type).toBe("approval_required");
+      expect(body.approval?.approvalId).toBeTruthy();
+      expect(body.approval?.taskId).toBeTruthy();
+      expect(body.approval?.status).toBe("pending");
+    } finally {
+      closeControlLayerSqliteStore();
+      await rm(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it("resumes tools.invoke only after explicit control approval is granted", async () => {
+    const stateDir = await mkdtemp(path.join(os.tmpdir(), "openclaw-tools-invoke-resume-"));
+    try {
+      process.env.OPENCLAW_STATE_DIR = stateDir;
+      process.env.OPENCLAW_TOOLS_INVOKE_REQUIRE_CONTROL_APPROVAL = "1";
+      allowAgentsListForMain();
+
+      const blocked = await invokeAgentsListAuthed({ sessionKey: "main" });
+      expect(blocked.status).toBe(409);
+      const blockedBody = await blocked.json();
+      const approvalId = blockedBody.approval?.approvalId as string | undefined;
+      expect(approvalId).toBeTruthy();
+
+      const approval = await decideControlApproval({
+        approvalId: approvalId ?? "",
+        decision: "approve",
+        actor: "tests",
+      });
+      expect(approval?.status).toBe("approved");
+
+      const allowed = await invokeTool({
+        port: sharedPort,
+        headers: {
+          ...gatewayAuthHeaders(),
+          "x-openclaw-approval-id": approvalId ?? "",
+        },
+        tool: "agents_list",
+        sessionKey: "main",
+      });
+      expect(allowed.status).toBe(200);
+      const allowedBody = await expectOkInvokeResponse(allowed);
+      expect(allowedBody.result).toEqual({ ok: true, result: [] });
+
+      const consumed = await invokeTool({
+        port: sharedPort,
+        headers: {
+          ...gatewayAuthHeaders(),
+          "x-openclaw-approval-id": approvalId ?? "",
+        },
+        tool: "agents_list",
+        sessionKey: "main",
+      });
+      expect(consumed.status).toBe(403);
+      await expect(consumed.json()).resolves.toMatchObject({
+        ok: false,
+        error: {
+          type: "approval_required",
+          message: expect.stringContaining("approval_already_consumed"),
+        },
+      });
+    } finally {
+      closeControlLayerSqliteStore();
+      await rm(stateDir, { recursive: true, force: true });
+    }
   });
 
   it("extends the HTTP deny list to high-risk execution and file tools", async () => {

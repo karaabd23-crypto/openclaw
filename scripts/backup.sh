@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
+STATE_DIR="${OPENCLAW_STATE_DIR:-/opt/openclaw/state}"
 CONTROL_DIR="$STATE_DIR/control-layer"
 DB_PATH="$CONTROL_DIR/control.sqlite"
 AUDIT_DIR="$CONTROL_DIR/audit"
@@ -14,7 +14,7 @@ fi
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 if [[ -z "$OUTPUT_ARG" ]]; then
-  OUT_DIR="$STATE_DIR/backups/control-layer"
+  OUT_DIR="${OPENCLAW_BACKUP_DIR:-/opt/openclaw/backups}"
   mkdir -p "$OUT_DIR"
   ARCHIVE_PATH="$OUT_DIR/control-layer-backup-$TS.tar.gz"
 elif [[ "$OUTPUT_ARG" == *.tar.gz ]]; then

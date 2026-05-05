@@ -33,7 +33,7 @@ ssh root@YOUR_DROPLET_IP
 apt-get update && apt-get install -y git
 mkdir -p /opt/openclaw
 cd /opt/openclaw
-git clone https://github.com/openclaw/openclaw.git repo
+git clone https://github.com/karaabd23-crypto/openclaw.git repo
 cd repo
 ```
 
@@ -81,7 +81,7 @@ What this does:
 
 - pulls latest git changes (fast-forward only, unless you set `OPENCLAW_DEPLOY_SKIP_PULL=1`)
 - validates compose config
-- builds `openclaw-gateway` and `openclaw-cli`
+- builds a local Docker image explicitly, then starts `openclaw-gateway`
 - starts `openclaw-gateway`
 - runs health checks
 
@@ -125,12 +125,14 @@ Create backup:
 
 ```bash
 cd /opt/openclaw/repo
+export OPENCLAW_STATE_DIR=/opt/openclaw/state
 bash scripts/backup.sh /opt/openclaw/backups
 ```
 
 Validate backup without restoring:
 
 ```bash
+export OPENCLAW_STATE_DIR=/opt/openclaw/state
 bash scripts/restore.sh /opt/openclaw/backups/control-layer-backup-<timestamp>.tar.gz --validate-only
 ```
 
@@ -138,6 +140,7 @@ Restore (planned maintenance window):
 
 ```bash
 docker compose stop openclaw-gateway
+export OPENCLAW_STATE_DIR=/opt/openclaw/state
 bash scripts/restore.sh /opt/openclaw/backups/control-layer-backup-<timestamp>.tar.gz /opt/openclaw/state/control-layer
 docker compose up -d openclaw-gateway
 bash scripts/healthcheck.sh

@@ -28,7 +28,7 @@ if [[ ! -f "$ARCHIVE_PATH" ]]; then
   exit 1
 fi
 
-STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
+STATE_DIR="${OPENCLAW_STATE_DIR:-/opt/openclaw/state}"
 if [[ -z "$TARGET_CONTROL_DIR" ]]; then
   TARGET_CONTROL_DIR="$STATE_DIR/control-layer"
 fi

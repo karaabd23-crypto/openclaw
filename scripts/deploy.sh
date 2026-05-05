@@ -22,6 +22,25 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+# Export .env so required variables are guaranteed available for this process.
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
+require_non_empty_env() {
+  local name="$1"
+  local value="${!name:-}"
+  if [[ -z "${value//[[:space:]]/}" ]]; then
+    echo "Missing required environment variable: $name" >&2
+    echo "Set $name in .env before running deploy." >&2
+    exit 1
+  fi
+}
+
+require_non_empty_env OPENCLAW_CONFIG_DIR
+require_non_empty_env OPENCLAW_WORKSPACE_DIR
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is not installed. Run scripts/setup-server.sh first." >&2
   exit 1
@@ -52,11 +71,22 @@ if is_truthy "$PRE_DEPLOY_BACKUP"; then
   bash scripts/backup.sh
 fi
 
-# Validate compose before build/start.
-docker compose config -q
+# Resolve image tag once so explicit build and compose runtime stay aligned.
+IMAGE_REF="${OPENCLAW_IMAGE:-}"
+if [[ -z "$IMAGE_REF" ]]; then
+  IMAGE_REF="$(grep -E '^[[:space:]]*OPENCLAW_IMAGE=' .env | tail -n 1 | cut -d= -f2- | tr -d '\r')"
+fi
+if [[ -z "$IMAGE_REF" ]]; then
+  IMAGE_REF="openclaw:local"
+fi
+export OPENCLAW_IMAGE="$IMAGE_REF"
+COMPOSE=(docker compose --env-file .env)
 
-DOCKER_BUILDKIT=1 docker compose build --pull openclaw-gateway openclaw-cli
-docker compose up -d openclaw-gateway
+# Validate compose before build/start.
+"${COMPOSE[@]}" config -q
+
+DOCKER_BUILDKIT=1 docker build --pull -t "$OPENCLAW_IMAGE" -f Dockerfile .
+"${COMPOSE[@]}" up -d openclaw-gateway
 
 bash scripts/healthcheck.sh
 

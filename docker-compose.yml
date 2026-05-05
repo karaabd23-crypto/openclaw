@@ -1,6 +1,10 @@
 services:
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       HOME: /home/node
       TERM: xterm-256color
@@ -40,10 +44,16 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
-      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+      - "${OPENCLAW_GATEWAY_HOST_BIND:-127.0.0.1}:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "${OPENCLAW_BRIDGE_HOST_BIND:-127.0.0.1}:${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     init: true
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     command:
       [
         "node",
@@ -91,6 +101,12 @@ services:
     stdin_open: true
     tty: true
     init: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     entrypoint: ["node", "dist/index.js"]
     depends_on:
-      - openclaw-gateway
+      openclaw-gateway:
+        condition: service_healthy

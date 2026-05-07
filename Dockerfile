@@ -250,6 +250,24 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
         docker-ce-cli docker-compose-plugin; \
     fi
 
+# Optionally install terminal AI CLIs via npm.
+# - GitHub Copilot CLI: https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli
+# - OpenAI Codex CLI: https://developers.openai.com/codex/cli
+#
+# Build with:
+#   docker build --build-arg OPENCLAW_INSTALL_COPILOT_CLI=1 --build-arg OPENCLAW_INSTALL_OPENAI_CODEX_CLI=1 ...
+ARG OPENCLAW_INSTALL_COPILOT_CLI=""
+ARG OPENCLAW_INSTALL_OPENAI_CODEX_CLI=""
+RUN if [ -n "$OPENCLAW_INSTALL_COPILOT_CLI" ] || [ -n "$OPENCLAW_INSTALL_OPENAI_CODEX_CLI" ]; then \
+      set -eux; \
+      if [ -n "$OPENCLAW_INSTALL_COPILOT_CLI" ]; then \
+        npm install -g @github/copilot; \
+      fi; \
+      if [ -n "$OPENCLAW_INSTALL_OPENAI_CODEX_CLI" ]; then \
+        npm install -g @openai/codex; \
+      fi; \
+    fi
+
 # Expose the CLI binary without requiring npm global writes as non-root.
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
  && chmod 755 /app/openclaw.mjs

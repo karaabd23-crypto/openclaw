@@ -71,7 +71,7 @@ jobs:
       android_matrix: ${{ steps.manifest.outputs.android_matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ inputs.target_ref || github.sha }}
           fetch-depth: 1
@@ -312,7 +312,7 @@ jobs:
       PRE_COMMIT_HOME: .cache/pre-commit-security-fast
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ inputs.target_ref || github.sha }}
           fetch-depth: 1
@@ -403,7 +403,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ inputs.target_ref || github.sha }}
           fetch-depth: 1
@@ -1713,7 +1713,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ needs.preflight.outputs.checkout_sha }}
           persist-credentials: false
@@ -1756,7 +1756,7 @@ jobs:
       matrix: ${{ fromJson(needs.preflight.outputs.checks_windows_matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ needs.preflight.outputs.checkout_sha }}
           persist-credentials: false
@@ -1861,7 +1861,7 @@ jobs:
       matrix: ${{ fromJson(needs.preflight.outputs.macos_node_matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ needs.preflight.outputs.checkout_sha }}
           persist-credentials: false
@@ -1902,7 +1902,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ needs.preflight.outputs.checkout_sha }}
           persist-credentials: false
